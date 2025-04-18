@@ -229,6 +229,7 @@ class Console
   public static function restoreSettings(): void
   {
     shell_exec('stty ' . self::$previousTerminalSettings);
+    Console::cursor()->enableBlinking();
   }
 
   /**

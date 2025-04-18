@@ -156,6 +156,18 @@ class Game implements ObservableInterface
   }
 
   /**
+   * Destruct the game engine.
+   */
+  public function __destruct()
+  {
+    Console::restoreSettings();
+
+    if ($lastError = error_get_last()) {
+      $this->handleError($lastError['type'], $lastError['message'], $lastError['file'], $lastError['line']);
+    }
+  }
+
+  /**
    * @return void
    */
   protected function initializeObservers(): void
@@ -204,7 +216,6 @@ class Game implements ObservableInterface
   private function handleException(Exception|Throwable|Error $exception): never
   {
     Debug::error($exception);
-//    Console::reset();
     $this->stop();
 
     if ($this->getSettings('debug')) {
@@ -221,6 +232,8 @@ class Game implements ObservableInterface
    */
   public function stop(): void
   {
+    Console::reset();
+
     Debug::info("Stopping game");
 
     // Disable non-blocking input mode
@@ -496,19 +509,6 @@ class Game implements ObservableInterface
   }
 
   /**
-   * Destruct the game engine.
-   */
-  public function __destruct()
-  {
-    Console::restoreSettings();
-    Console::reset();
-
-    if ($lastError = error_get_last()) {
-      $this->handleError($lastError['type'], $lastError['message'], $lastError['file'], $lastError['line']);
-    }
-  }
-
-  /**
    * Run the game.
    *
    * @return void
@@ -525,6 +525,11 @@ class Game implements ObservableInterface
       while ($this->isRunning) {
         $this->handleInput();
         $this->update();
+
+        if (!$this->isRunning) {
+          break;
+        }
+
         $this->render();
 
         usleep($sleepTime);

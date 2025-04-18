@@ -35,6 +35,22 @@ final class Physics implements SingletonInterface, SimulatorInterface
    * @var Grid The static collision map. This is used for detecting collisions with static objects in the scene.
    */
   protected Grid $staticCollisionMap;
+  /**
+   * @var Grid The world. This is used for detecting collisions with the world bounds.
+   */
+  protected Grid $world;
+  /**
+   * @var int The width of the world. This is used for detecting collisions with the world bounds.
+   */
+  protected int $worldWidth;
+  /**
+   * @var int The height of the world. This is used for detecting collisions with the world bounds.
+   */
+  protected int $worldHeight;
+  /**
+   * @var array<CollisionInterface<T>> The collisions in the physics engine.
+   */
+  protected array $collisions = [];
 
   /**
    * Physics constructor.
@@ -42,12 +58,10 @@ final class Physics implements SingletonInterface, SimulatorInterface
   private function __construct()
   {
     // This is a private constructor to prevent users from creating a new instance of the Physics class.
-    /** @var ItemList<ColliderInterface<T>> $colliders */
-    $colliders = new ItemList(ColliderInterface::class);
+    $this->worldWidth = MAX_SCREEN_WIDTH * 3;
+    $this->worldHeight = MAX_SCREEN_WIDTH * 3;
 
-    $this->colliders = $colliders;
-
-    $this->staticCollisionMap = new Grid(100, 100);
+    $this->init();
   }
 
   /**
@@ -70,13 +84,17 @@ final class Physics implements SingletonInterface, SimulatorInterface
   public function simulate(): void
   {
     // This method will be called once per frame to simulate the physics in the scene.
-    # Get clean slate of physics world
+    # Get a clean slate of the physics world
+    $this->clearWorld();
 
     # Update the physics world
+    $this->updateWorld();
 
     # Record the collisions
+    $this->recordCollisions();
 
     # Dispatch the collisions
+    $this->dispatchCollisions();
   }
 
   /**
@@ -167,5 +185,59 @@ final class Physics implements SingletonInterface, SimulatorInterface
     }
 
     return false;
+  }
+
+  /**
+   * @return void
+   */
+  protected function clearWorld(): void
+  {
+    $this->world = new Grid($this->worldWidth, $this->worldHeight);
+    $this->staticCollisionMap = new Grid($this->worldWidth, $this->worldWidth);
+  }
+
+  /**
+   * Updates the physics world.
+   *
+   * @return void
+   */
+  protected function updateWorld(): void
+  {
+    // TODO: Implement updateWorld() method.
+  }
+
+  /**
+   * Records the collisions in the physics engine.
+   *
+   * @return void
+   */
+  protected function recordCollisions(): void
+  {
+    // TODO: Implement recordCollisions() method.
+  }
+
+  /**
+   * Dispatches the collisions to the colliders.
+   *
+   * @return void
+   */
+  protected function dispatchCollisions(): void
+  {
+    // TODO: Implement dispatchCollisions() method.
+  }
+
+  /**
+   * Initializes the physics engine.
+   *
+   * @return void
+   */
+  public function init(): void
+  {
+    /** @var ItemList<ColliderInterface<T>> $colliders */
+    $colliders = new ItemList(ColliderInterface::class);
+
+    $this->colliders = $colliders;
+
+    $this->clearWorld();
   }
 }

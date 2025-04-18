@@ -174,7 +174,7 @@ abstract class AbstractScene implements SceneInterface
   {
     Debug::info("Scene started: " . $this->name);
   
-    $this->createWordsSpace();
+    $this->createWorldSpace();
     $this->loadStaticEnvironment();
 
     foreach ($this->rootGameObjects as $gameObject) {
@@ -388,9 +388,9 @@ abstract class AbstractScene implements SceneInterface
   }
 
   /**
-   * Creates the words space.
+   * Creates the world space.
    */
-  private function createWordsSpace(): void
+  private function createWorldSpace(): void
   {
     Debug::info('Creating world space for ' . $this->name);
     $width = $this->settings['screen_width'];

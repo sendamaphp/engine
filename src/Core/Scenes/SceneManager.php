@@ -15,7 +15,10 @@ use Sendama\Engine\Debug\Debug;
 use Sendama\Engine\Events\Enumerations\SceneEventType;
 use Sendama\Engine\Events\EventManager;
 use Sendama\Engine\Events\SceneEvent;
+use Sendama\Engine\Exceptions\IncorrectComponentTypeException;
 use Sendama\Engine\Exceptions\Scenes\SceneNotFoundException;
+use Sendama\Engine\Physics\Interfaces\ColliderInterface;
+use Sendama\Engine\Physics\Physics;
 
 /**
  * Class SceneManager. Manages the scenes of the game.
@@ -44,6 +47,7 @@ final class SceneManager implements SingletonInterface, CanStart, CanResume, Can
    * @var EventManager $eventManager The event manager.
    */
   protected EventManager $eventManager;
+  protected Physics $physics;
 
   /**
    * Constructs a SceneManager
@@ -52,6 +56,7 @@ final class SceneManager implements SingletonInterface, CanStart, CanResume, Can
   {
     $this->eventManager = EventManager::getInstance();
     $this->scenes = new ItemList(SceneInterface::class);
+    $this->physics = Physics::getInstance();
   }
 
   /**
@@ -290,6 +295,16 @@ final class SceneManager implements SingletonInterface, CanStart, CanResume, Can
    */
   public function load(): void
   {
+    $this->physics->init();
+    foreach ($this->activeSceneNode->getScene()->getRootGameObjects() as $gameObject) {
+      if ($collider = $gameObject->getComponent(ColliderInterface::class)) {
+        assert($collider instanceof ColliderInterface, new IncorrectComponentTypeException(
+          ColliderInterface::class,
+          get_class($collider)
+        ));
+        $this->physics->addCollider($collider);;
+      }
+    }
     $this->activeSceneNode->getScene()->load();
     $this->eventManager->dispatchEvent(new SceneEvent(SceneEventType::LOAD_END));
   }
