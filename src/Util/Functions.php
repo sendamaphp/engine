@@ -394,11 +394,11 @@ if (! function_exists('get_screen_width')) {
    * Returns the screen width.
    *
    * @return int The screen width.
-   * @deprecated 0.5.0 Use get_configured_screen_width() instead.
+   * @throws Exception
    */
   function get_screen_width(): int
   {
-    return get_configured_screen_width();
+    return Console::getSize()->getWidth();
   }
 }
 
@@ -419,11 +419,11 @@ if (! function_exists('get_screen_height')) {
    * Returns the screen height.
    *
    * @return int The screen height.
-   * @deprecated 0.5.0 Use get_configured_screen_height() instead.
+   * @throws Exception
    */
   function get_screen_height(): int
   {
-    return get_configured_screen_height();
+    return Console::getSize()->getHeight();
   }
 }
 
