@@ -1,5 +1,5 @@
-<div align="center">
-    <img src="logo.jpg" alt="Sendama 2d Game Engine" width="128" height="128" align="center">    
+<div align="center" style="margin: 32px">
+    <img src="logo.png" alt="Sendama 2d Game Engine" width="128" height="128" align="center">    
 </div>
 
 # Sendama &mdash; A 2D Game Engine for Terminal Based Games
