@@ -389,25 +389,51 @@ if (! function_exists('config') ) {
   }
 }
 
-if (! function_exists('get_screen_width') ) {
+if (! function_exists('get_screen_width')) {
+  /**
+   * Returns the screen width.
+   *
+   * @return int The screen width.
+   * @throws Exception
+   */
+  function get_screen_width(): int
+  {
+    return Console::getSize()->getWidth();
+  }
+}
+
+if (! function_exists('get_configured_screen_width') ) {
   /**
    * Returns the screen width.
    *
    * @return int The screen width.
    */
-  function get_screen_width(): int
+  function get_configured_screen_width(): int
   {
     return config(AppConfig::class, 'player.screen.width', DEFAULT_SCREEN_WIDTH);
   }
 }
 
-if (! function_exists('get_screen_height') ) {
+if (! function_exists('get_screen_height')) {
+  /**
+   * Returns the screen height.
+   *
+   * @return int The screen height.
+   * @throws Exception
+   */
+  function get_screen_height(): int
+  {
+    return Console::getSize()->getHeight();
+  }
+}
+
+if (! function_exists('get_configured_screen_height') ) {
   /**
    * Returns the screen height.
    *
    * @return int The screen height.
    */
-  function get_screen_height(): int
+  function get_configured_screen_height(): int
   {
     return config(AppConfig::class, 'player.screen.height', DEFAULT_SCREEN_HEIGHT);
   }
