@@ -23,7 +23,7 @@ class PausedState extends GameState
    */
   public function update(): void
   {
-    if (Input::isKeyDown($this->context->getSettings('pause_key'))) {
+    if (Input::isKeyDown($this->game->getSettings('pause_key'))) {
       $this->resume();
     }
 
@@ -50,8 +50,8 @@ class PausedState extends GameState
   {
     Console::clear();
     $this->sceneManager->getActiveScene()?->resume();
-    if ($sceneState = $this->context->getState('scene')) {
-      $this->context->setState($sceneState);
+    if ($sceneState = $this->game->getState('scene')) {
+      $this->game->setState($sceneState);
     }
   }
 
@@ -71,8 +71,8 @@ class PausedState extends GameState
   private function renderDefaultPauseText(): void
   {
     $promptText = 'PAUSED';
-    $leftMargin = intval(($this->context->getSettings('screen_width') / 2) - (strlen($promptText) / 2));
-    $topMargin = intval(($this->context->getSettings('screen_height') / 2) - 1);
+    $leftMargin = intval(($this->game->getSettings('screen_width') / 2) - (strlen($promptText) / 2));
+    $topMargin = intval(($this->game->getSettings('screen_height') / 2) - 1);
     Console::cursor()->moveTo($leftMargin, $topMargin);
     echo $promptText;
   }

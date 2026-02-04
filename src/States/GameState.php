@@ -15,14 +15,50 @@ use Sendama\Engine\UI\UIManager;
  */
 abstract class GameState implements GameStateInterface
 {
-  public final function __construct(
-    protected Game $context,
-    protected SceneManager $sceneManager,
-    protected EventManager $eventManager,
-    protected ModalManager $modalManager,
-    protected NotificationsManager $notificationsManager,
-    protected UIManager $UIManager,
-  )
-  {
-  }
+    protected Game $game;
+    protected SceneManager $sceneManager;
+    protected EventManager $eventManager;
+    protected ModalManager $modalManager;
+    protected NotificationsManager $notificationsManager;
+    protected UIManager $UIManager;
+
+    /**
+     * @param GameStateContext $context
+     */
+    public final function __construct(GameStateContext $context)
+    {
+        $this->game = $context->game;
+        $this->sceneManager = $context->sceneManager;
+        $this->eventManager = $context->eventManager;
+        $this->modalManager = $context->modalManager;
+        $this->notificationsManager = $context->notificationsManager;
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function enter(GameStateContext $context): void
+    {
+        $this->game = $context->game;
+        $this->sceneManager = $context->sceneManager;
+        $this->eventManager = $context->eventManager;
+        $this->modalManager = $context->modalManager;
+        $this->notificationsManager = $context->notificationsManager;
+
+        // Do nothing.
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function exit(GameStateContext $context): void
+    {
+        $this->game = $context->game;
+        $this->sceneManager = $context->sceneManager;
+        $this->eventManager = $context->eventManager;
+        $this->modalManager = $context->modalManager;
+        $this->notificationsManager = $context->notificationsManager;
+
+        // Do nothing.
+    }
 }
