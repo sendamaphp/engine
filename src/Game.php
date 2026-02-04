@@ -8,6 +8,7 @@ use Error;
 use Exception;
 use Sendama\Engine\Core\Enumerations\ChronoUnit;
 use Sendama\Engine\Core\Enumerations\SettingsKey;
+use Sendama\Engine\Core\Rendering\SplashScreen;
 use Sendama\Engine\Core\Scenes\Interfaces\SceneInterface;
 use Sendama\Engine\Core\Scenes\SceneManager;
 use Sendama\Engine\Core\Time;
@@ -22,6 +23,7 @@ use Sendama\Engine\Events\Interfaces\ObservableInterface;
 use Sendama\Engine\Events\Interfaces\ObserverInterface;
 use Sendama\Engine\Events\Interfaces\StaticObserverInterface;
 use Sendama\Engine\Exceptions\InitializationException;
+use Sendama\Engine\Exceptions\IOException;
 use Sendama\Engine\Exceptions\Scenes\SceneNotFoundException;
 use Sendama\Engine\Interfaces\GameStateInterface;
 use Sendama\Engine\IO\Console\Console;
@@ -131,6 +133,8 @@ class Game implements ObservableInterface
    */
   private GameStateInterface $state;
 
+  private SplashScreen $splashScreen;
+
   /**
    * Game constructor.
    *
@@ -150,13 +154,16 @@ class Game implements ObservableInterface
       $this->initializeSettings();
       $this->initializeGameStates();
       $this->configureWindowChangeSignalHandler();
-    } catch (Error|Exception|Throwable $exception) {
+      $this->splashScreen = new SplashScreen($this->consoleCursor, $this->settings);
+    } catch (Error|Throwable $exception) {
       $this->handleException($exception);
     }
   }
 
   /**
    * Destruct the game engine.
+   *
+   * @throws IOException
    */
   public function __destruct()
   {
@@ -190,6 +197,7 @@ class Game implements ObservableInterface
    * Configure error and exception handlers.
    *
    * @return void
+   * @throws IOException
    */
   protected function configureErrorAndExceptionHandlers(): void
   {
@@ -210,10 +218,11 @@ class Game implements ObservableInterface
   /**
    * Handle game exceptions.
    *
-   * @param Exception|Throwable|Error $exception The exception to be handled.
+   * @param Throwable|Error $exception The exception to be handled.
    * @return never
+   * @throws IOException
    */
-  private function handleException(Exception|Throwable|Error $exception): never
+  private function handleException(Throwable|Error $exception): never
   {
     Debug::error($exception);
     $this->stop();
@@ -229,6 +238,7 @@ class Game implements ObservableInterface
    * Stop the game.
    *
    * @return void
+   * @throws IOException
    */
   public function stop(): void
   {
@@ -282,6 +292,8 @@ class Game implements ObservableInterface
 
   /**
    * @inheritDoc
+   *
+   * @throws IOException
    */
   public function notify(EventInterface $event): void
   {
@@ -324,6 +336,7 @@ class Game implements ObservableInterface
    * @param string $errfile
    * @param int $errline
    * @return never
+   * @throws IOException
    */
   private function handleError(int $errno, string $errstr, string $errfile, int $errline): never
   {
@@ -414,6 +427,7 @@ class Game implements ObservableInterface
    *
    * @param array<string, mixed>|null $settings The settings to load. If null will load default settings.
    * @return $this The current instance of the game engine.
+   * @throws IOException
    */
   public function loadSettings(?array $settings = null): self
   {
@@ -504,7 +518,7 @@ class Game implements ObservableInterface
   public static function quit(): void
   {
     if (confirm("Are you sure you want to quit?", "", 40)) {
-      EventManager::getInstance()->dispatchEvent(new GameEvent(GameEventType::QUIT));
+      dispatchEvent(new GameEvent(GameEventType::QUIT));
     }
   }
 
@@ -512,6 +526,7 @@ class Game implements ObservableInterface
    * Run the game.
    *
    * @return void
+   * @throws IOException
    */
   public function run(): void
   {
@@ -549,6 +564,7 @@ class Game implements ObservableInterface
    * Start the game.
    *
    * @return void
+   * @throws IOException
    */
   private function start(): void
   {
@@ -573,7 +589,7 @@ class Game implements ObservableInterface
     InputManager::enableNonBlockingMode();
 
     // Show the splash screen
-    $this->showSplashScreen();
+    $this->splashScreen->show();
 
     // Handle game events
     $this->handleGameEvents();
@@ -598,54 +614,8 @@ class Game implements ObservableInterface
   }
 
   /**
-   * Display the splash screen.
-   *
    * @return void
-   */
-  private function showSplashScreen(): void
-  {
-    try {
-      Debug::info("Showing splash screen");
-      Console::setSize(MAX_SCREEN_WIDTH, MAX_SCREEN_HEIGHT);
-
-      // Check if a splash texture can be loaded
-      if (!file_exists($this->getSettings('splash_texture'))) {
-        Debug::warn("Splash screen texture not found: {$this->settings[SettingsKey::SPLASH_TEXTURE->value]}");
-        $this->settings[SettingsKey::SPLASH_TEXTURE->value] = Path::join(Path::getVendorAssetsDirectory(), DEFAULT_SPLASH_TEXTURE_PATH);
-      }
-
-      Debug::info("Loading splash screen texture");
-      $splashScreen = file_get_contents($this->getSettings('splash_texture'));
-      $splashScreenRows = explode("\n", $splashScreen);
-      $splashScreenWidth = 75;
-      $splashScreenHeight = 25;
-      $splashByLine = 'SendamaEngine ™';
-      $splashScreenRows[] = sprintf("%s%s", str_repeat(' ', $splashScreenWidth - 12), "powered by");
-      $splashScreenRows[] = sprintf("%s%s", str_repeat(' ', $splashScreenWidth - strlen($splashByLine)), $splashByLine);
-
-      $leftMargin = (MAX_SCREEN_WIDTH / 2) - ($splashScreenWidth / 2);
-      $topMargin = (MAX_SCREEN_HEIGHT / 2) - ($splashScreenHeight / 2);
-
-      Debug::info("Rendering splash screen texture");
-      foreach ($splashScreenRows as $rowIndex => $row) {
-        $this->consoleCursor->moveTo((int)$leftMargin, (int)($topMargin + $rowIndex));
-        Console::output()->write($row);
-      }
-
-      $duration = (int)($this->getSettings('splash_screen_duration') * 1000000);
-      usleep($duration);
-
-      Console::setSize($this->getSettings('screen_width'), $this->getSettings('screen_height'));
-      Console::clear();
-
-      Debug::info("Splash screen hidden");
-    } catch (Exception $exception) {
-      $this->handleException($exception);
-    }
-  }
-
-  /**
-   * @return void
+   * @throws IOException
    */
   private function handleGameEvents(): void
   {
@@ -653,15 +623,10 @@ class Game implements ObservableInterface
       // Handle game events
       $this->eventManager->addEventListener(EventType::GAME, function (GameEvent $event) {
         Debug::info("Game event received");
-        switch ($event->gameEventType) {
-          case GameEventType::QUIT:
+        if ($event->gameEventType === GameEventType::QUIT) {
             Debug::info("Game quit event received");
             $this->notify(new GameEvent(GameEventType::QUIT));
             $this->stop();
-            break;
-
-          default:
-            break;
         }
       });
 
@@ -698,6 +663,7 @@ class Game implements ObservableInterface
    * Update the game state.
    *
    * @return void
+   * @throws IOException
    */
   private function update(): void
   {
@@ -710,6 +676,7 @@ class Game implements ObservableInterface
    * Render the game.
    *
    * @return void
+   * @throws IOException
    */
   private function render(): void
   {
