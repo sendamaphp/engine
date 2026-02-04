@@ -1,0 +1,33 @@
+{
+  "name": "sendama-engine/pong",
+  "version": "1.0.0",
+  "description": "A new 2D ASCII terminal game.",
+  "type": "project",
+  "require": {
+    "php": "^8.3",
+    "sendamaphp/engine": "*"
+  },
+  "require-dev": {
+    "phpstan/phpstan": "^1.10",
+    "pestphp/pest": "^4.3"
+  },
+  "autoload": {
+    "psr-4": {
+      "Sendama\\Pong\\": "assets/"
+    }
+  },
+  "repositories": [
+    {
+      "type": "path",
+      "url": "../",
+      "options": {
+        "symlink": true
+      }
+    }
+  ],
+  "config": {
+    "allow-plugins": {
+      "pestphp/pest-plugin": true
+    }
+  }
+}
