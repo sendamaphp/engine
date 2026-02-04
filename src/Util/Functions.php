@@ -25,6 +25,19 @@ function getGameName(): string
   return SceneManager::getInstance()->getSettings('game_name') ?? $_ENV['GAME_NAME'];
 }
 
+if (! function_exists('dispatchEvent') ) {
+  /**
+   * Dispatches the given event.
+   *
+   * @param EventInterface $event The event to dispatch.
+   * @return bool True if the event was dispatched successfully, false otherwise.
+   */
+  function dispatchEvent(EventInterface $event): bool
+  {
+    return EventManager::getInstance()->dispatchEvent($event);
+  }
+}
+
 /**
  * Quits the game with the given exit code.
  *
