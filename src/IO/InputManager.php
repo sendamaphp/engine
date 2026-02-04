@@ -5,6 +5,7 @@ namespace Sendama\Engine\IO;
 use RuntimeException;
 use Sendama\Engine\Events\EventManager;
 use Sendama\Engine\Events\KeyboardEvent;
+use Sendama\Engine\Exceptions\IOException;
 use Sendama\Engine\IO\Enumerations\AxisName;
 use Sendama\Engine\IO\Enumerations\KeyCode;
 
@@ -57,12 +58,12 @@ class InputManager
    * Enables non-blocking mode.
    *
    * @return void
-   * @throws RuntimeException Thrown if non-blocking mode could not be enabled.
+   * @throws IOException Thrown if non-blocking mode could not be enabled.
    */
   public static function enableNonBlockingMode(): void
   {
     if (false === stream_set_blocking(STDIN, false)) {
-      throw new RuntimeException('Failed to enable non-blocking mode.');
+      throw new IOException('Failed to enable non-blocking mode.');
     }
   }
 
@@ -70,12 +71,12 @@ class InputManager
    * Disables non-blocking mode.
    *
    * @return void
-   * @throws RuntimeException Thrown if non-blocking mode could not be disabled.
+   * @throws IOException Thrown if non-blocking mode could not be disabled.
    */
   public static function disableNonBlockingMode(): void
   {
     if (false === stream_set_blocking(STDIN, true)) {
-      throw new RuntimeException('Failed to disable non-blocking mode.');
+      throw new IOException('Failed to disable non-blocking mode.');
     }
   }
 
@@ -169,21 +170,23 @@ class InputManager
       return $axis->getValue();
     }
 
+    $value = 0;
+
     if ($axisName === AxisName::HORIZONTAL) {
       if (self::isAnyKeyPressed([KeyCode::LEFT, KeyCode::A, KeyCode::a])) {
-        return -1;
-      } else if (self::isAnyKeyPressed([KeyCode::RIGHT, KeyCode::D, KeyCode::d])) {
-        return 1;
+        $value = -1;
+      } elseif (self::isAnyKeyPressed([KeyCode::RIGHT, KeyCode::D, KeyCode::d])) {
+        $value = 1;
       }
-    } else if ($axisName === AxisName::VERTICAL) {
+    } elseif ($axisName === AxisName::VERTICAL) {
       if (self::isAnyKeyPressed([KeyCode::UP, KeyCode::W, KeyCode::w])) {
-        return -1;
-      } else if (self::isAnyKeyPressed([KeyCode::DOWN, KeyCode::S, KeyCode::s])) {
-        return 1;
+        $value = -1;
+      } elseif (self::isAnyKeyPressed([KeyCode::DOWN, KeyCode::S, KeyCode::s])) {
+        $value = 1;
       }
     }
 
-    return 0;
+    return $value;
   }
 
   /**
@@ -192,10 +195,10 @@ class InputManager
    * @param KeyCode[] $keyCodes The key codes to check.
    * @return bool Returns true if any key is pressed, false otherwise.
    */
-  public static function isAnyKeyPressed(array $keyCodes): bool
+  public static function isAnyKeyPressed(array $keyCodes, bool $ignoreCase = true): bool
   {
     foreach ($keyCodes as $keyCode) {
-      if (self::isKeyDown($keyCode)) {
+      if (self::isKeyDown($keyCode, $ignoreCase)) {
         return true;
       }
     }
@@ -209,12 +212,19 @@ class InputManager
    * @param KeyCode $keyCode The key code to check.
    * @return bool Returns true if the key is pressed down, false otherwise.
    */
-  public static function isKeyDown(KeyCode $keyCode): bool
+  public static function isKeyDown(KeyCode $keyCode, bool $ignoreCase = true): bool
   {
     $key = self::getKey(self::$keyPress);
     $previousKey = self::getKey(self::$previousKeyPress);
+    $keyCodeValue = $keyCode->value;
 
-    return $key === $keyCode->value && $previousKey !== $key;
+    if ($ignoreCase) {
+      $key = mb_strtolower($key);
+      $previousKey = mb_strtolower($previousKey);
+      $keyCodeValue = mb_strtolower($keyCode->value);
+    }
+
+    return $key === $keyCodeValue && $previousKey !== $key;
   }
 
   /**

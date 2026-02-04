@@ -4,6 +4,7 @@ namespace Sendama\Engine\Debug;
 
 use RuntimeException;
 use Sendama\Engine\Debug\Enumerations\LogLevel;
+use Sendama\Engine\Exceptions\DebuggingException;
 use Sendama\Engine\Util\Path;
 
 /**
@@ -11,7 +12,7 @@ use Sendama\Engine\Util\Path;
  *
  * @package Sendama\Engine\Debug
  */
-class Debug
+final class Debug
 {
   /**
    * @var string|null $logDirectory The directory to write the log files to.
@@ -86,18 +87,18 @@ class Debug
 
     if (!file_exists($filename)) {
       if (!is_writeable(self::getLogDirectory())) {
-        throw new RuntimeException("The directory, " . self::getLogDirectory() . ", is not writable.");
+        throw new DebuggingException("The directory, " . self::getLogDirectory() . ", is not writable.");
       }
 
       if (false === $file = fopen($filename, 'w')) {
-        throw new RuntimeException("Failed to create the debug log file.");
+        throw new DebuggingException("Failed to create the debug log file.");
       }
       fclose($file);
     }
 
     $message = sprintf("[%s] %s - %s", date('Y-m-d H:i:s'), $prefix, $message) . PHP_EOL;
     if (false === error_log($message, 3, $filename)) {
-      throw new RuntimeException("Failed to write to the debug log.");
+      throw new DebuggingException("Failed to write to the debug log.");
     }
   }
 
@@ -118,11 +119,11 @@ class Debug
 
     if (!file_exists($filename)) {
       if (!is_writeable(self::getLogDirectory())) {
-        throw new RuntimeException("The directory, " . self::getLogDirectory() . ", is not writable.");
+        throw new DebuggingException("The directory, " . self::getLogDirectory() . ", is not writable.");
       }
 
       if (false === $file = fopen($filename, 'w')) {
-        throw new RuntimeException("Failed to create the error log file.");
+        throw new DebuggingException("Failed to create the error log file.");
       }
 
       fclose($file);
@@ -130,7 +131,7 @@ class Debug
 
     $message = sprintf("[%s] %s - %s", date('Y-m-d H:i:s'), $prefix, $message) . PHP_EOL;
     if (false === error_log($message, 3, $filename)) {
-      throw new RuntimeException("Failed to write to the debug log.");
+      throw new DebuggingException("Failed to write to the error log.");
     }
   }
 

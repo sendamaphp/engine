@@ -51,9 +51,9 @@ class Input
    * @param array<KeyCode> $keyCodes
    * @return bool Returns true if any key is pressed, false otherwise.
    */
-  public static function isAnyKeyPressed(array $keyCodes): bool
+  public static function isAnyKeyPressed(array $keyCodes, bool $ignoreCase = true): bool
   {
-    return InputManager::isAnyKeyPressed($keyCodes);
+    return InputManager::isAnyKeyPressed($keyCodes, $ignoreCase);
   }
 
   /**
