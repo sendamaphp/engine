@@ -19,6 +19,7 @@ use Sendama\Engine\Exceptions\IncorrectComponentTypeException;
 use Sendama\Engine\Exceptions\Scenes\SceneNotFoundException;
 use Sendama\Engine\Physics\Interfaces\ColliderInterface;
 use Sendama\Engine\Physics\Physics;
+use function dispatchEvent;
 
 /**
  * Class SceneManager. Manages the scenes of the game.
@@ -149,7 +150,7 @@ final class SceneManager implements SingletonInterface, CanStart, CanResume, Can
   public function loadScene(int|string $index): self
   {
     Debug::info("Loading scene: $index");
-    $this->eventManager->dispatchEvent(new SceneEvent(SceneEventType::LOAD_START));
+    dispatchEvent(new SceneEvent(SceneEventType::LOAD_START));
 
     $sceneToBeLoaded = null;
 
@@ -250,7 +251,7 @@ final class SceneManager implements SingletonInterface, CanStart, CanResume, Can
   {
     if ($this->activeSceneNode) {
       $this->activeSceneNode->getScene()->updatePhysics();
-      $this->eventManager->dispatchEvent(new SceneEvent(SceneEventType::UPDATE_PHYSICS, $this->activeSceneNode->getScene()));
+      dispatchEvent(new SceneEvent(SceneEventType::UPDATE_PHYSICS, $this->activeSceneNode->getScene()));
     }
   }
 
@@ -263,7 +264,7 @@ final class SceneManager implements SingletonInterface, CanStart, CanResume, Can
 
     if ($this->activeSceneNode) {
       $this->activeSceneNode->getScene()->update();
-      $this->eventManager->dispatchEvent(new SceneEvent(SceneEventType::UPDATE, $this->activeSceneNode->getScene()));
+      dispatchEvent(new SceneEvent(SceneEventType::UPDATE, $this->activeSceneNode->getScene()));
     }
   }
 
@@ -306,7 +307,7 @@ final class SceneManager implements SingletonInterface, CanStart, CanResume, Can
       }
     }
     $this->activeSceneNode->getScene()->load();
-    $this->eventManager->dispatchEvent(new SceneEvent(SceneEventType::LOAD_END));
+    dispatchEvent(new SceneEvent(SceneEventType::LOAD_END));
   }
 
   /**
