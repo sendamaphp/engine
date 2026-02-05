@@ -33,6 +33,8 @@ use function dispatchEvent;
  */
 final class SceneManager implements SingletonInterface, CanStart, CanResume, CanUpdate, CanRender, CanLoad
 {
+    public const string SCENE_FILE_EXTENSION = '.scene.php';
+
     /**
      * @var SceneManager|null $instance The instance of the SceneManager.
      */
@@ -324,13 +326,15 @@ final class SceneManager implements SingletonInterface, CanStart, CanResume, Can
     }
 
     /**
-     * @param string $path
+     * Loads a scene from a file.
+     *
+     * @param string $path The path to the scene file without the extension.
      * @return void
      * @throws SceneNotFoundException
      */
     public function loadSceneFromFile(string $path): void
     {
-        $filename = $path . '.scene.php';
+        $filename = $path . self::SCENE_FILE_EXTENSION;
 
         if (!file_exists($filename)) {
             throw new SceneNotFoundException($path);
