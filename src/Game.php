@@ -747,11 +747,12 @@ class Game implements ObservableInterface
     /**
      * @param string ...$paths
      * @return $this
+     * @throws SceneNotFoundException
      */
     public function loadScenes(string ...$paths): self
     {
         foreach ($paths as $path) {
-            $canonicalPath = Path::join(Path::getCurrentWorkingDirectory(), $path);
+            $canonicalPath = Path::join(Path::getWorkingDirectoryAssetsPath(), $path);
             $this->sceneManager->loadSceneFromFile($canonicalPath);
         }
         return $this;
