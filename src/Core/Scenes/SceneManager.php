@@ -397,6 +397,17 @@ final class SceneManager implements SingletonInterface, CanStart, CanResume, Can
                             $gameObject->setSpriteFromTexture($spriteTexture, $spritePosition, $spriteSize);
                         }
 
+                        if (isset($rootGameObject->components)) {
+                            foreach ($rootGameObject->components as $componentMetadata) {
+                                if (!isset($componentMetadata->class)) {
+                                    throw new SceneManagementException("Component class not defined for game object: " . $gameObject->getName());
+                                }
+
+                                $componentClass = $componentMetadata->class;
+                                $gameObject->addComponent($componentClass);
+                            }
+                        }
+
                         $this->add($gameObject);
                     }
                 }
