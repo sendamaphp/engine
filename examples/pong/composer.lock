@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "e355cc5c432fb93dcff70e25bb7e81a4",
+    "content-hash": "ef457958aba18fc5f67701369aca652f",
     "packages": [
         {
             "name": "amasiye/figlet",
@@ -240,54 +240,6 @@
             "time": "2024-11-18T09:09:55+00:00"
         },
         {
-            "name": "phplang/scope-exit",
-            "version": "1.0.0",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/phplang/scope-exit.git",
-                "reference": "239b73abe89f9414aa85a7ca075ec9445629192b"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/phplang/scope-exit/zipball/239b73abe89f9414aa85a7ca075ec9445629192b",
-                "reference": "239b73abe89f9414aa85a7ca075ec9445629192b",
-                "shasum": ""
-            },
-            "require-dev": {
-                "phpunit/phpunit": "*"
-            },
-            "type": "library",
-            "autoload": {
-                "psr-4": {
-                    "PhpLang\\": "src/"
-                }
-            },
-            "notification-url": "https://packagist.org/downloads/",
-            "license": [
-                "BSD"
-            ],
-            "authors": [
-                {
-                    "name": "Sara Golemon",
-                    "email": "pollita@php.net",
-                    "homepage": "https://twitter.com/SaraMG",
-                    "role": "Developer"
-                }
-            ],
-            "description": "Emulation of SCOPE_EXIT construct from C++",
-            "homepage": "https://github.com/phplang/scope-exit",
-            "keywords": [
-                "cleanup",
-                "exit",
-                "scope"
-            ],
-            "support": {
-                "issues": "https://github.com/phplang/scope-exit/issues",
-                "source": "https://github.com/phplang/scope-exit/tree/master"
-            },
-            "time": "2016-09-17T00:15:18+00:00"
-        },
-        {
             "name": "phpoption/phpoption",
             "version": "1.9.5",
             "source": {
@@ -521,30 +473,42 @@
             "time": "2020-12-15T21:32:01+00:00"
         },
         {
-            "name": "swaggest/json-diff",
-            "version": "v3.12.1",
+            "name": "sendamaphp/engine",
+            "version": "0.4.7",
             "source": {
                 "type": "git",
-                "url": "https://github.com/swaggest/json-diff.git",
-                "reference": "7ebc4eab95bcc73916433964c266588d09b35052"
+                "url": "https://github.com/sendamaphp/engine.git",
+                "reference": "0a14468e0bf956a880bc9a16e4aa571ccd84208a"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/swaggest/json-diff/zipball/7ebc4eab95bcc73916433964c266588d09b35052",
-                "reference": "7ebc4eab95bcc73916433964c266588d09b35052",
+                "url": "https://api.github.com/repos/sendamaphp/engine/zipball/0a14468e0bf956a880bc9a16e4aa571ccd84208a",
+                "reference": "0a14468e0bf956a880bc9a16e4aa571ccd84208a",
                 "shasum": ""
             },
             "require": {
-                "ext-json": "*",
-                "php": ">=7.1"
+                "amasiye/figlet": "^1.2",
+                "assegaiphp/collections": "^0.3.2",
+                "ext-pcntl": "*",
+                "league/climate": "^3.8",
+                "php": "^8.3",
+                "vlucas/phpdotenv": "^5.6"
             },
             "require-dev": {
-                "phperf/phpunit": "4.8.37"
+                "pestphp/pest": "^4.3",
+                "phpstan/phpstan": "^1.10"
             },
             "type": "library",
             "autoload": {
+                "files": [
+                    "src/Util/Constants.php",
+                    "src/Util/Functions.php"
+                ],
                 "psr-4": {
-                    "Swaggest\\JsonDiff\\": "src/"
+                    "Sendama\\Engine\\": "src/",
+                    "Sendama\\Engine\\Mocks\\": "tests/Mocks/",
+                    "Sendama\\Examples\\Blasters\\": "examples/blasters/assets/",
+                    "Sendama\\Examples\\Collector\\": "examples/collector/assets/"
                 }
             },
             "notification-url": "https://packagist.org/downloads/",
@@ -553,67 +517,16 @@
             ],
             "authors": [
                 {
-                    "name": "Viacheslav Poturaev",
-                    "email": "vearutop@gmail.com"
+                    "name": "Andrew Masiye",
+                    "email": "amasiye313@gmail.com"
                 }
             ],
-            "description": "JSON diff/rearrange/patch/pointer library for PHP",
+            "description": "A simple game engine for making terminal/console games. Lovingly written in pure PHP.",
             "support": {
-                "issues": "https://github.com/swaggest/json-diff/issues",
-                "source": "https://github.com/swaggest/json-diff/tree/v3.12.1"
+                "issues": "https://github.com/sendamaphp/engine/issues",
+                "source": "https://github.com/sendamaphp/engine/tree/0.4.7"
             },
-            "time": "2025-03-10T08:22:10+00:00"
-        },
-        {
-            "name": "swaggest/json-schema",
-            "version": "v0.12.43",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/swaggest/php-json-schema.git",
-                "reference": "1f3a77a382c5d273a0f1fe34be3b8af4060a88cd"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/swaggest/php-json-schema/zipball/1f3a77a382c5d273a0f1fe34be3b8af4060a88cd",
-                "reference": "1f3a77a382c5d273a0f1fe34be3b8af4060a88cd",
-                "shasum": ""
-            },
-            "require": {
-                "ext-json": "*",
-                "php": ">=7.1",
-                "phplang/scope-exit": "^1.0",
-                "swaggest/json-diff": "^3.8.2",
-                "symfony/polyfill-mbstring": "^1.19"
-            },
-            "require-dev": {
-                "phperf/phpunit": "4.8.37"
-            },
-            "suggest": {
-                "ext-mbstring": "For better performance"
-            },
-            "type": "library",
-            "autoload": {
-                "psr-4": {
-                    "Swaggest\\JsonSchema\\": "src/"
-                }
-            },
-            "notification-url": "https://packagist.org/downloads/",
-            "license": [
-                "MIT"
-            ],
-            "authors": [
-                {
-                    "name": "Viacheslav Poturaev",
-                    "email": "vearutop@gmail.com"
-                }
-            ],
-            "description": "High definition PHP structures with JSON-schema based validation",
-            "support": {
-                "email": "vearutop@gmail.com",
-                "issues": "https://github.com/swaggest/php-json-schema/issues",
-                "source": "https://github.com/swaggest/php-json-schema/tree/v0.12.43"
-            },
-            "time": "2024-12-22T21:18:27+00:00"
+            "time": "2026-02-04T02:19:17+00:00"
         },
         {
             "name": "symfony/console",
@@ -1198,86 +1111,6 @@
                 }
             ],
             "time": "2025-01-02T08:10:11+00:00"
-        },
-        {
-            "name": "symfony/polyfill-php83",
-            "version": "v1.33.0",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/symfony/polyfill-php83.git",
-                "reference": "17f6f9a6b1735c0f163024d959f700cfbc5155e5"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/symfony/polyfill-php83/zipball/17f6f9a6b1735c0f163024d959f700cfbc5155e5",
-                "reference": "17f6f9a6b1735c0f163024d959f700cfbc5155e5",
-                "shasum": ""
-            },
-            "require": {
-                "php": ">=7.2"
-            },
-            "type": "library",
-            "extra": {
-                "thanks": {
-                    "url": "https://github.com/symfony/polyfill",
-                    "name": "symfony/polyfill"
-                }
-            },
-            "autoload": {
-                "files": [
-                    "bootstrap.php"
-                ],
-                "psr-4": {
-                    "Symfony\\Polyfill\\Php83\\": ""
-                },
-                "classmap": [
-                    "Resources/stubs"
-                ]
-            },
-            "notification-url": "https://packagist.org/downloads/",
-            "license": [
-                "MIT"
-            ],
-            "authors": [
-                {
-                    "name": "Nicolas Grekas",
-                    "email": "p@tchwork.com"
-                },
-                {
-                    "name": "Symfony Community",
-                    "homepage": "https://symfony.com/contributors"
-                }
-            ],
-            "description": "Symfony polyfill backporting some PHP 8.3+ features to lower PHP versions",
-            "homepage": "https://symfony.com",
-            "keywords": [
-                "compatibility",
-                "polyfill",
-                "portable",
-                "shim"
-            ],
-            "support": {
-                "source": "https://github.com/symfony/polyfill-php83/tree/v1.33.0"
-            },
-            "funding": [
-                {
-                    "url": "https://symfony.com/sponsor",
-                    "type": "custom"
-                },
-                {
-                    "url": "https://github.com/fabpot",
-                    "type": "github"
-                },
-                {
-                    "url": "https://github.com/nicolas-grekas",
-                    "type": "github"
-                },
-                {
-                    "url": "https://tidelift.com/funding/github/packagist/symfony/symfony",
-                    "type": "tidelift"
-                }
-            ],
-            "time": "2025-07-08T02:45:35+00:00"
         },
         {
             "name": "symfony/service-contracts",
@@ -3052,16 +2885,16 @@
         },
         {
             "name": "phpunit/php-file-iterator",
-            "version": "6.0.0",
+            "version": "6.0.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/sebastianbergmann/php-file-iterator.git",
-                "reference": "961bc913d42fe24a257bfff826a5068079ac7782"
+                "reference": "3d1cd096ef6bea4bf2762ba586e35dbd317cbfd5"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/sebastianbergmann/php-file-iterator/zipball/961bc913d42fe24a257bfff826a5068079ac7782",
-                "reference": "961bc913d42fe24a257bfff826a5068079ac7782",
+                "url": "https://api.github.com/repos/sebastianbergmann/php-file-iterator/zipball/3d1cd096ef6bea4bf2762ba586e35dbd317cbfd5",
+                "reference": "3d1cd096ef6bea4bf2762ba586e35dbd317cbfd5",
                 "shasum": ""
             },
             "require": {
@@ -3101,15 +2934,27 @@
             "support": {
                 "issues": "https://github.com/sebastianbergmann/php-file-iterator/issues",
                 "security": "https://github.com/sebastianbergmann/php-file-iterator/security/policy",
-                "source": "https://github.com/sebastianbergmann/php-file-iterator/tree/6.0.0"
+                "source": "https://github.com/sebastianbergmann/php-file-iterator/tree/6.0.1"
             },
             "funding": [
                 {
                     "url": "https://github.com/sebastianbergmann",
                     "type": "github"
+                },
+                {
+                    "url": "https://liberapay.com/sebastianbergmann",
+                    "type": "liberapay"
+                },
+                {
+                    "url": "https://thanks.dev/u/gh/sebastianbergmann",
+                    "type": "thanks_dev"
+                },
+                {
+                    "url": "https://tidelift.com/funding/github/packagist/phpunit/php-file-iterator",
+                    "type": "tidelift"
                 }
             ],
-            "time": "2025-02-07T04:58:37+00:00"
+            "time": "2026-02-02T14:04:18+00:00"
         },
         {
             "name": "phpunit/php-invoker",
@@ -4711,8 +4556,7 @@
     "prefer-stable": false,
     "prefer-lowest": false,
     "platform": {
-        "php": "^8.3",
-        "ext-pcntl": "*"
+        "php": "^8.3"
     },
     "platform-dev": {},
     "plugin-api-version": "2.9.0"
