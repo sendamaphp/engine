@@ -88,7 +88,7 @@ abstract class AbstractScene implements SceneInterface
         $this->awake();
 
         if ($this->environmentTileMapPath) {
-            $this->loadEnvironmentTileMapData();
+            $this->loadEnvironmentTileMapData($this->environmentTileMapPath);
         }
     }
 
