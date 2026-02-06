@@ -254,6 +254,9 @@ final class SceneManager implements SingletonInterface, CanStart, CanResume, Can
         $this->activeSceneNode?->getScene()->suspend();
     }
 
+    /**
+     * Updates the physics of the active scene.
+     */
     public function updatePhysics(): void
     {
         if ($this->activeSceneNode) {
