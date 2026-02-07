@@ -12,7 +12,7 @@ use Sendama\Engine\Core\Interfaces\CanUpdate;
 use Sendama\Engine\Core\Interfaces\SingletonInterface;
 use Sendama\Engine\Core\Scenes\Interfaces\SceneInterface;
 use Sendama\Engine\Core\Scenes\Interfaces\SceneNodeInterface;
-use Sendama\Engine\Core\Texture2D;
+use Sendama\Engine\Core\Texture;
 use Sendama\Engine\Core\Vector2;
 use Sendama\Engine\Debug\Debug;
 use Sendama\Engine\Events\Enumerations\SceneEventType;
@@ -23,7 +23,8 @@ use Sendama\Engine\Exceptions\Scenes\SceneManagementException;
 use Sendama\Engine\Exceptions\Scenes\SceneNotFoundException;
 use Sendama\Engine\Physics\Interfaces\ColliderInterface;
 use Sendama\Engine\Physics\Physics;
-use Sendama\Engine\Util\Path;
+use Sendama\Engine\UI\Label\Label;
+use Sendama\Engine\UI\Text\Text;
 use function dispatchEvent;
 
 /**
@@ -354,65 +355,107 @@ final class SceneManager implements SingletonInterface, CanStart, CanResume, Can
                 $sceneMetadata = $this->sceneMetadata;
 
                 if (isset($sceneMetadata->environmentTileMapPath)) {
-                    Debug::log("Setting environment tile map path to: " . $sceneMetadata->environmentTileMapPath);
                     $this->environmentTileMapPath = $sceneMetadata->environmentTileMapPath;
                 }
 
                 // Build hierarchy
                 if (isset($sceneMetadata->hierarchy)) {
-                    Debug::info("1. Building scene hierarchy from metadata");
-                    foreach ($sceneMetadata->hierarchy as $index => $rootGameObject) {
+                    foreach ($sceneMetadata->hierarchy as $index => $item) {
+                        if (!isset($item->type)) {
+                            Debug::warn("The 'type' property is not supported in scene hierarchy items. Item: " . ($item->name ?? "Unnamed GameObject") . " - $index");
+                            continue;
+                        }
+
+                        $itemName = $item?->name . " - $index" ?? throw new SceneManagementException("Invalid game object name");
+
                         $position = new Vector2();
-                        if (isset($rootGameObject->position)) {
-                            $position = Vector2::fromArray((array)$rootGameObject->position);
+                        if (isset($item->position)) {
+                            $position = Vector2::fromArray((array)$item->position);
                         }
 
-                        $rotation = new Vector2();
-                        if (isset($rootGameObject->rotation)) {
-                            $rotation = Vector2::fromArray((array)$rootGameObject->rotation);
+                        $size = new Vector2();
+                        if (isset($item->size)) {
+                            $size = Vector2::fromArray((array)$item->size);
                         }
 
-                        $scale = new Vector2();
-                        if (isset($rootGameObject->scale)) {
-                            $scale = Vector2::fromArray((array)$rootGameObject->scale);
-                        }
+                        $gameObject = null;
 
-                        $gameObject = new GameObject(
-                            $rootGameObject?->name . " - $index" ?? throw new SceneManagementException("Invalid game object name"),
-                            $rootGameObject?->tag,
-                            $position,
-                            $rotation,
-                            $scale
-                        );
-
-                        if (isset($rootGameObject->sprite)) {
-                            if (!isset($rootGameObject->sprite->texture)) {
-                                throw new SceneManagementException("Sprite texture not defined for game object: " . $gameObject->getName());
-                            }
-
-                            $spriteTextureMetadata = $rootGameObject->sprite->texture;
-                            $spriteTexture = new Texture2D($spriteTextureMetadata->path ?? throw new SceneManagementException("Invalid sprite texture path"));
-                            $spritePosition = new Vector2();
-                            if (isset($spriteTextureMetadata->position)) {
-                                $spritePosition = Vector2::fromArray((array)$spriteTextureMetadata->position);
-                            }
-                            $spriteSize = new Vector2();
-                            if (isset($spriteTextureMetadata->size)) {
-                                $spriteSize = Vector2::fromArray((array)$spriteTextureMetadata->size);
-                            }
-
-                            $gameObject->setSpriteFromTexture($spriteTexture, $spritePosition, $spriteSize);
-                        }
-
-                        if (isset($rootGameObject->components)) {
-                            foreach ($rootGameObject->components as $componentMetadata) {
-                                if (!isset($componentMetadata->class)) {
-                                    throw new SceneManagementException("Component class not defined for game object: " . $gameObject->getName());
+                        switch ($item->type) {
+                            case GameObject::class:
+                                $rotation = new Vector2();
+                                if (isset($item->rotation)) {
+                                    $rotation = Vector2::fromArray((array)$item->rotation);
                                 }
 
-                                $componentClass = $componentMetadata->class;
-                                $gameObject->addComponent($componentClass);
-                            }
+                                $scale = new Vector2();
+                                if (isset($item->scale)) {
+                                    $scale = Vector2::fromArray((array)$item->scale);
+                                }
+
+                                $gameObject = new GameObject(
+                                    $itemName,
+                                    $item?->tag,
+                                    $position,
+                                    $rotation,
+                                    $scale
+                                );
+
+                                if (isset($item->sprite)) {
+                                    if (!isset($item->sprite->texture)) {
+                                        throw new SceneManagementException("Sprite texture not defined for game object: " . $gameObject->getName());
+                                    }
+
+                                    $spriteTextureMetadata = $item->sprite->texture;
+                                    $spriteTexture = new Texture($spriteTextureMetadata->path ?? throw new SceneManagementException("Invalid sprite texture path"));
+                                    $spritePosition = new Vector2();
+                                    if (isset($spriteTextureMetadata->position)) {
+                                        $spritePosition = Vector2::fromArray((array)$spriteTextureMetadata->position);
+                                    }
+                                    $spriteSize = new Vector2();
+                                    if (isset($spriteTextureMetadata->size)) {
+                                        $spriteSize = Vector2::fromArray((array)$spriteTextureMetadata->size);
+                                    }
+
+                                    $gameObject->setSpriteFromTexture($spriteTexture, $spritePosition, $spriteSize);
+                                }
+
+                                if (isset($item->components)) {
+                                    foreach ($item->components as $componentMetadata) {
+                                        if (!isset($componentMetadata->class)) {
+                                            throw new SceneManagementException("Component class not defined for game object: " . $gameObject->getName());
+                                        }
+
+                                        $componentClass = $componentMetadata->class;
+                                        $component = $gameObject->addComponent($componentClass);
+
+                                        if (isset($componentMetadata->proerties)) {
+                                            foreach ($componentMetadata->proerties as $key => $value) {
+                                                if (!property_exists($component, $key)) {
+                                                    Debug::warn("Property '$key' does not exist on component of type: " . $componentClass);
+                                                    continue;
+                                                }
+
+                                                $component->$key = $value;
+                                            }
+                                        }
+                                    }
+                                }
+
+                                break;
+
+                            default:
+                                $gameObject = match($item->type) {
+                                    Label::class => new Label($this, $itemName, $position, $size),
+                                    Text::class => new Text($this, $itemName, $position, $size)
+                                };
+
+                                if (isset($item->text)) {
+                                    if (!method_exists($gameObject, 'setText')) {
+                                        throw new SceneManagementException("The 'text' property is not supported for game object of type: " . $item->type);
+                                    }
+
+                                    $gameObject->setText($item->text);
+                                }
                         }
 
                         $this->add($gameObject);

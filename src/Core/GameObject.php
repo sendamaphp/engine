@@ -94,6 +94,8 @@ class GameObject implements GameObjectInterface
             $clone->transform->setParent($parent);
         }
 
+        SceneManager::getInstance()->getActiveScene()->add($clone);
+
         return $clone;
     }
 
@@ -601,14 +603,14 @@ class GameObject implements GameObjectInterface
     /**
      * @inheritDoc
      */
-    public function setSpriteFromTexture(Texture2D|array|string $texture, Vector2 $position, Vector2 $size): void
+    public function setSpriteFromTexture(Texture|array|string $texture, Vector2 $position, Vector2 $size): void
     {
         if (is_array($texture)) {
-            $texture = new Texture2D($texture['path'], $texture['width'] ?? -1, $texture['height'] ?? -1);
+            $texture = new Texture($texture['path'], $texture['width'] ?? -1, $texture['height'] ?? -1);
         }
 
         if (is_string($texture)) {
-            $texture = new Texture2D($texture);
+            $texture = new Texture($texture);
         }
 
         $this->setSprite(new Sprite($texture, new Rect($position, $size)));

@@ -17,11 +17,11 @@ class Sprite implements Serializable
   /**
    * Sprite constructor. Creates a new sprite.
    *
-   * @param Texture2D $texture The texture of the sprite.
+   * @param Texture $texture The texture of the sprite.
    * @param Rect|array{x: int, y: int, width: int, height: int} $rect The rectangle of the sprite.
    * @param Vector2 $pivot The pivot of the sprite.
    */
-  public function __construct(protected Texture2D $texture, Rect|array $rect, protected Vector2 $pivot = new Vector2(0, 0))
+  public function __construct(protected Texture $texture, Rect|array $rect, protected Vector2 $pivot = new Vector2(0, 0))
   {
     $this->rect = is_array($rect) ? Rect::fromArray($rect) : $rect;
   }
@@ -29,9 +29,9 @@ class Sprite implements Serializable
   /**
    * Returns the texture of the sprite.
    *
-   * @return Texture2D The texture of the sprite.
+   * @return Texture The texture of the sprite.
    */
-  public function getTexture(): Texture2D
+  public function getTexture(): Texture
   {
     return $this->texture;
   }
@@ -39,10 +39,10 @@ class Sprite implements Serializable
   /**
    * Sets the texture of the sprite.
    *
-   * @param Texture2D $texture The texture to set.
+   * @param Texture $texture The texture to set.
    * @return void
    */
-  public function setTexture(Texture2D $texture): void
+  public function setTexture(Texture $texture): void
   {
     $this->texture = $texture;
   }
@@ -151,7 +151,7 @@ class Sprite implements Serializable
   }
 
   /**
-   * @return array{texture: Texture2D, rect: Rect, pivot: Vector2}
+   * @return array{texture: Texture, rect: Rect, pivot: Vector2}
    */
   public function __serialize(): array
   {
@@ -159,7 +159,7 @@ class Sprite implements Serializable
   }
 
   /**
-   * @param array{texture: Texture2D, rect: Rect, pivot: Vector2} $data
+   * @param array{texture: Texture, rect: Rect, pivot: Vector2} $data
    */
   public function __unserialize(array $data): void
   {
