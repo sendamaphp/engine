@@ -205,8 +205,8 @@ class Console
    */
   public static function getSize(): Rect
   {
-    $width = passthru("tput cols") ?: throw new Exception('Failed to get terminal width.');
-    $height = passthru("tput lines") ?: throw new Exception('Failed to get terminal height.');
+    $width = (int)trim(shell_exec("tput cols")) ?: throw new Exception('Failed to get terminal width.');
+    $height = (int)trim(shell_exec("tput lines")) ?: throw new Exception('Failed to get terminal height.');
 
     return new Rect(new Vector2(1, 1), new Vector2($width, $height));
   }

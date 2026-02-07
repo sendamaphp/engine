@@ -6,7 +6,7 @@ use Sendama\Engine\Core\Behaviours\CharacterMovement;
 use Sendama\Engine\Core\Behaviours\SimpleQuitListener;
 use Sendama\Engine\Core\GameObject;
 use Sendama\Engine\Core\Sprite;
-use Sendama\Engine\Core\Texture2D;
+use Sendama\Engine\Core\Texture;
 use Sendama\Engine\Core\Vector2;
 
 /**
@@ -31,7 +31,7 @@ class ExampleScene extends AbstractScene
     $levelManager->addComponent(SimpleQuitListener::class);
 
     # Set up the player
-    $playerTexture = new Texture2D('Textures/player.texture');
+    $playerTexture = new Texture('Textures/player.texture');
     $player->setSpriteFromTexture($playerTexture, Vector2::zero(), Vector2::one());
     /**
      * @var CharacterMovement $characterMovement

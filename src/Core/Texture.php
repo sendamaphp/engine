@@ -13,7 +13,7 @@ use Stringable;
  *
  * @package Sendama\Engine\Core
  */
-class Texture2D implements Stringable
+class Texture implements Stringable
 {
     use DimensionTrait;
 
@@ -31,7 +31,7 @@ class Texture2D implements Stringable
     private string $path;
 
     /**
-     * Creates a new instance of the Texture2D class.
+     * Creates a new instance of the Texture class.
      *
      * @param string $path The path to the image file.
      * @param int $width The width of the texture.

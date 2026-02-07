@@ -22,6 +22,7 @@ use Sendama\Engine\UI\Menus\Interfaces\MenuGraphNodeInterface;
 use Sendama\Engine\UI\Menus\Interfaces\MenuInterface;
 use Sendama\Engine\UI\Menus\Interfaces\MenuItemInterface;
 use Sendama\Engine\UI\Windows\BorderPack;
+use Sendama\Engine\UI\Windows\Interfaces\BorderPackInterface;
 use Sendama\Engine\UI\Windows\Window;
 
 /**
@@ -94,7 +95,7 @@ class Menu implements MenuInterface
    * @param bool $canNavigate Whether the menu can navigate or not.
    */
   public function __construct(
-    protected string $title,
+    string $title,
     protected string $description = '',
     protected Rect $dimensions = new Rect(
       new Vector2(0, 0),
@@ -114,7 +115,7 @@ class Menu implements MenuInterface
 
     $this->observers = new ItemList(ObserverInterface::class);
     $this->staticObservers = new ItemList(StaticObserverInterface::class);
-    $this->window = new Window($this->title, $this->description, $this->dimensions->getPosition(), $this->dimensions->getWidth(), $this->dimensions->getHeight(), $borderPack);
+    $this->window = new Window($title, $this->description, $this->dimensions->getPosition(), $this->dimensions->getWidth(), $this->dimensions->getHeight(), $borderPack);
 
     $this->awake();
   }
@@ -138,10 +139,10 @@ class Menu implements MenuInterface
   /**
    * Sets the border of the menu.
    *
-   * @param BorderPack $borderPack The border pack.
+   * @param BorderPackInterface $borderPack The border pack.
    * @return void
    */
-  public function setBorderPack(BorderPack $borderPack): void
+  public function setBorderPack(BorderPackInterface $borderPack): void
   {
     $this->window->setBorderPack($borderPack);
   }
@@ -436,7 +437,7 @@ class Menu implements MenuInterface
    */
   public function getTitle(): string
   {
-    return $this->title;
+    return $this->window->getTitle();
   }
 
   /**
@@ -613,7 +614,7 @@ class Menu implements MenuInterface
    */
   public function getArgs(): array
   {
-    return ['title' => $this->title, 'description' => $this->description, 'dimensions' => $this->dimensions, 'items' => $this->items, 'cursor' => $this->cursor, 'active_color' => $this->activeColor,];
+    return ['title' => $this->getTitle(), 'description' => $this->description, 'dimensions' => $this->dimensions, 'items' => $this->items, 'cursor' => $this->cursor, 'active_color' => $this->activeColor,];
   }
 
   /**
@@ -629,7 +630,7 @@ class Menu implements MenuInterface
    */
   public function setTitle(string $title): void
   {
-    $this->title = $title;
+    $this->window->setTitle($title);
   }
 
   /**

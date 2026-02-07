@@ -5,7 +5,7 @@ namespace Sendama\Engine\Core\Interfaces;
 use Sendama\Engine\Core\Component;
 use Sendama\Engine\Core\Scenes\Interfaces\SceneInterface;
 use Sendama\Engine\Core\Sprite;
-use Sendama\Engine\Core\Texture2D;
+use Sendama\Engine\Core\Texture;
 use Sendama\Engine\Core\Vector2;
 use Sendama\Engine\UI\Interfaces\UIElementInterface;
 
@@ -26,12 +26,12 @@ interface GameObjectInterface extends CanCompare, CanResume, CanUpdate, CanStart
   /**
    * Sets the sprite of the game object from a texture.
    *
-   * @param Texture2D|array{path: string, width: ?int, height: ?int}|string $texture The path to the sprite texture.
+   * @param Texture|array{path: string, width: ?int, height: ?int}|string $texture The path to the sprite texture.
    * @param Vector2 $position The position of the sprite
    * @param Vector2 $size
    * @return void
    */
-  public function setSpriteFromTexture(Texture2D|array|string $texture, Vector2 $position, Vector2 $size): void;
+  public function setSpriteFromTexture(Texture|array|string $texture, Vector2 $position, Vector2 $size): void;
 
   /**
    * Sets the sprite of the game object

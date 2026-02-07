@@ -1,22 +1,22 @@
 <?php
 
-use Sendama\Engine\Core\Texture2D;
+use Sendama\Engine\Core\Texture;
 use Sendama\Engine\IO\Enumerations\Color;
 use Sendama\Engine\Util\Path;
 
-describe('Texture2D', function () {
+describe('Texture', function () {
   beforeEach(function () {
     $this->workingDirectory = dirname(__DIR__, 2);
     $this->texturePath = Path::join($this->workingDirectory, 'Mocks/Textures/test.texture');
   });
 
   it ('can be created', function () {
-    $texture = new Texture2D($this->texturePath);
-    expect($texture)->toBeInstanceOf(Texture2D::class);
+    $texture = new Texture($this->texturePath);
+    expect($texture)->toBeInstanceOf(Texture::class);
   });
 
   it('can manipulate the texture dimensions', function() {
-    $texture = new Texture2D($this->texturePath);
+    $texture = new Texture($this->texturePath);
     $width = 32;
     $height = 32;
 
@@ -30,7 +30,7 @@ describe('Texture2D', function () {
   });
 
   it('can control the texture coloer', function() {
-    $texture = new Texture2D($this->texturePath);
+    $texture = new Texture($this->texturePath);
     $color = Color::RED;
 
     $texture->setColor($color);
@@ -40,7 +40,7 @@ describe('Texture2D', function () {
   });
 
   it('can manipulate texture pixels', function() {
-    $texture = new Texture2D($this->texturePath);
+    $texture = new Texture($this->texturePath);
     $x = 1;
     $y = 0;
     $expectedPixel = '<';
@@ -57,7 +57,7 @@ describe('Texture2D', function () {
   });
 
   it('can be converted to a string', function() {
-    $texture = new Texture2D($this->texturePath);
+    $texture = new Texture($this->texturePath);
     $expectedString = file_get_contents($this->texturePath);
 
     expect(strval($texture))
