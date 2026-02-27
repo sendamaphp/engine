@@ -6,7 +6,7 @@ use Sendama\Engine\Core\Behaviours\CharacterMovement;
 use Sendama\Engine\Core\GameObject;
 use Sendama\Engine\Core\Scenes\AbstractScene;
 use Sendama\Engine\Core\Sprite;
-use Sendama\Engine\Core\Texture2D;
+use Sendama\Engine\Core\Texture;
 use Sendama\Engine\Core\Vector2;
 use Sendama\Examples\Blasters\Scripts\Game\LevelManager;
 use Sendama\Examples\Blasters\Scripts\Player\WeaponManager;
@@ -37,7 +37,7 @@ class Level01 extends AbstractScene
 
     $playerStartingX = 4;
     $playerStartingY = $screenHeight / 2;
-    $playerTexture = new Texture2D('Textures/player.texture');
+    $playerTexture = new Texture('Textures/player.texture');
     $player->setSpriteFromTexture($playerTexture, new Vector2(0, 1), new Vector2(5, 3));
     $player->getTransform()->setPosition(new Vector2($playerStartingX, $playerStartingY));
     /**

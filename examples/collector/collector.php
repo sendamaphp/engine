@@ -18,7 +18,7 @@ function bootstrap(): void
 
   $settingsScene = new SettingsScene('Settings');
   $titleScene = new TitleScene('Title Screen');
-  $titleScene->setTitle($gameName);
+  $titleScene->setMenuTitle($gameName);
   $titleScene
     ->setTitleFont(FontName::BASIC)
     ->setNewGameSceneIndex(2)
