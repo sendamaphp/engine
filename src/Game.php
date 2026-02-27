@@ -713,7 +713,7 @@ class Game implements ObservableInterface
     {
         return match (gettype($this->getSettings('debug'))) {
             'boolean' => $this->getSettings('debug'),
-            'string' => strtolower($this->getSettings('debug')) === 'true',
+            'string' => in_array(strtolower($this->getSettings('debug')), ['true', '1', 'yes'], true),
             'integer' => $this->getSettings('debug') === 1,
             default => false
         };
