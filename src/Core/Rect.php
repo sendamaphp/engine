@@ -92,7 +92,28 @@ class Rect
    */
   public function overlaps(Rect $other): bool
   {
-    return $this->contains(new Vector2($other->getX(), $other->getY())) || $this->contains(new Vector2($other->getX() + $other->getWidth(), $other->getY())) || $this->contains(new Vector2($other->getX(), $other->getY() + $other->getHeight())) || $this->contains(new Vector2($other->getX() + $other->getWidth(), $other->getY() + $other->getHeight()));
+    return
+      $this->getX() < $other->getX() + $other->getWidth() &&
+      $this->getX() + $this->getWidth() > $other->getX() &&
+      $this->getY() < $other->getY() + $other->getHeight() &&
+      $this->getY() + $this->getHeight() > $other->getY();
+  }
+
+  /**
+   * Returns a translated copy of the rect.
+   *
+   * @param Vector2 $translation The translation to apply.
+   * @return self
+   */
+  public function translated(Vector2 $translation): self
+  {
+    return new self(
+      new Vector2(
+        $this->getX() + $translation->getX(),
+        $this->getY() + $translation->getY()
+      ),
+      $this->getSize(),
+    );
   }
 
   /**

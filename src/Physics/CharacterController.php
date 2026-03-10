@@ -10,7 +10,7 @@ use Sendama\Engine\Events\Interfaces\ObservableInterface;
 use Sendama\Engine\Events\Interfaces\ObserverInterface;
 use Sendama\Engine\Events\Interfaces\StaticObserverInterface;
 use Sendama\Engine\Physics\Interfaces\CollisionInterface;
-use Sendama\Engine\Physics\Strategies\SimpleCollisionDetectionStrategy;
+use Sendama\Engine\Physics\Strategies\AABBCollisionDetectionStrategy;
 
 /**
  * The class CharacterController. It allows you to do movement constrained by collisions without having to deal with a
@@ -43,7 +43,7 @@ class CharacterController extends Collider implements ObservableInterface
 
     public function onStart(): void
     {
-        $this->collisionDetectionStrategy = new SimpleCollisionDetectionStrategy($this);
+        $this->collisionDetectionStrategy = new AABBCollisionDetectionStrategy($this);
 
         /** @var ItemList<ObserverInterface> $observers */
         $observers = new ItemList(ObserverInterface::class);
@@ -62,18 +62,22 @@ class CharacterController extends Collider implements ObservableInterface
      */
     public function move(Vector2 $motion): void
     {
-        $collisions = $this->physics?->checkCollisions($this, $motion);
-        $canMove = true;
+        $collisions = $this->physics?->checkCollisions($this, $motion) ?? [];
+        $blockingCollisionCount = 0;
 
-        // If there are collisions, resolve them.
-        foreach ($collisions ?? [] as $collision) {
-            if ($collision->getContact(0)?->getSeparation()) {
-                $this->resolveCollision($collision);
+        foreach ($collisions as $collision) {
+            $this->resolveCollision($collision);
+
+            if (!($collision->getContact(0)?->getOtherCollider()?->isTrigger() ?? false)) {
+                $blockingCollisionCount++;
             }
         }
 
-        // If there are no collisions, move the character.
-        $this->getTransform()->translate($motion);
+        $this->previousCollisions = $collisions;
+
+        if ($blockingCollisionCount === 0) {
+            $this->getTransform()->translate($motion);
+        }
     }
 
     /**
