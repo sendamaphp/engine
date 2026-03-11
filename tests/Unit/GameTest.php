@@ -18,10 +18,18 @@ it('reads debug flags from sendama config when env overrides are absent', functi
   ConfigStore::put(AppConfig::class, new ArrayConfig([
     'debug' => true,
     'showDebugInfo' => true,
+    'player' => [
+      'screen' => [
+        'width' => 80,
+        'height' => 28,
+      ],
+    ],
   ]));
 
   expect(invokePrivateStaticMethod(Game::class, 'resolveConfiguredSetting', 'DEBUG_MODE', ['debug', 'debugMode'], false))->toBeTrue()
     ->and(invokePrivateStaticMethod(Game::class, 'resolveConfiguredSetting', 'SHOW_DEBUG_INFO', ['showDebugInfo', 'debug_info'], false))->toBeTrue()
+    ->and(invokePrivateStaticMethod(Game::class, 'resolveConfiguredIntSetting', 'SCREEN_WIDTH', ['player.screen.width', 'screenWidth', 'screen_width'], 160))->toBe(80)
+    ->and(invokePrivateStaticMethod(Game::class, 'resolveConfiguredIntSetting', 'SCREEN_HEIGHT', ['player.screen.height', 'screenHeight', 'screen_height'], 40))->toBe(28)
     ->and(invokePrivateStaticMethod(Game::class, 'isTruthySetting', true))->toBeTrue();
 });
 

@@ -7,6 +7,7 @@ use Sendama\Engine\Core\Behaviours\SimpleQuitListener;
 use Sendama\Engine\Core\GameObject;
 use Sendama\Engine\Core\Rect;
 use Sendama\Engine\Core\Scenes\AbstractScene;
+use Sendama\Engine\Core\Scenes\SceneManager;
 use Sendama\Engine\Core\Vector2;
 use Sendama\Engine\Debug\Debug;
 use Sendama\Engine\UI\Menus\Menu;
@@ -29,9 +30,13 @@ class SettingsScene extends AbstractScene
     $settingsMenuWidth = 30;
     $settingsMenuHeight = DEFAULT_MENU_HEIGHT;
 
+    $sceneManager = SceneManager::getInstance();
+    $screenWidth = $sceneManager->getSettings('screen_width') ?? DEFAULT_SCREEN_WIDTH;
+    $screenHeight = $sceneManager->getSettings('screen_height') ?? DEFAULT_SCREEN_HEIGHT;
+
     Debug::log(var_export($this->settings, true));
-    $leftMargin = round(DEFAULT_SCREEN_WIDTH / 2 - $settingsMenuWidth / 2);
-    $topMargin = round(DEFAULT_SCREEN_HEIGHT / 2 - $settingsMenuHeight / 2);
+    $leftMargin = round($screenWidth / 2 - $settingsMenuWidth / 2);
+    $topMargin = round($screenHeight / 2 - $settingsMenuHeight / 2);
     $settingsMenuBorderPack = new BorderPack(Path::join(Path::getVendorAssetsDirectory(), 'border-packs', 'slim.border.php'));
 
     $settingsPosition = new Vector2($leftMargin, $topMargin);

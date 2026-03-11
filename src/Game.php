@@ -378,8 +378,16 @@ class Game implements ObservableInterface
         }
 
         $this->settings[SettingsKey::GAME_NAME->value] = $_ENV['GAME_NAME'] ?? $this->name;
-        $this->settings[SettingsKey::SCREEN_WIDTH->value] = $this->screenWidth;
-        $this->settings[SettingsKey::SCREEN_HEIGHT->value] = $this->screenHeight;
+        $this->settings[SettingsKey::SCREEN_WIDTH->value] = self::resolveConfiguredIntSetting(
+            'SCREEN_WIDTH',
+            ['player.screen.width', 'screenWidth', SettingsKey::SCREEN_WIDTH->value],
+            $this->screenWidth
+        );
+        $this->settings[SettingsKey::SCREEN_HEIGHT->value] = self::resolveConfiguredIntSetting(
+            'SCREEN_HEIGHT',
+            ['player.screen.height', 'screenHeight', SettingsKey::SCREEN_HEIGHT->value],
+            $this->screenHeight
+        );
         $this->settings[SettingsKey::FPS->value] = DEFAULT_FPS;
         $this->settings[SettingsKey::ASSETS_DIR->value] = Path::join(getcwd(), DEFAULT_ASSETS_PATH);
 
@@ -466,8 +474,26 @@ class Game implements ObservableInterface
             Debug::info("Loading game settings");
             // Game
             $this->settings[SettingsKey::GAME_NAME->value] = $settings[SettingsKey::GAME_NAME->value] ?? $this->name;
-            $this->settings[SettingsKey::SCREEN_WIDTH->value] = $settings[SettingsKey::SCREEN_WIDTH->value] ?? $this->screenWidth;
-            $this->settings[SettingsKey::SCREEN_HEIGHT->value] = $settings[SettingsKey::SCREEN_HEIGHT->value] ?? $this->screenHeight;
+            $this->settings[SettingsKey::SCREEN_WIDTH->value] = self::resolveIntSettingValue(
+                $settings[SettingsKey::SCREEN_WIDTH->value]
+                    ?? $settings['screenWidth']
+                    ?? self::resolveConfiguredSetting(
+                        'SCREEN_WIDTH',
+                        ['player.screen.width', 'screenWidth', SettingsKey::SCREEN_WIDTH->value],
+                        $this->screenWidth
+                    ),
+                $this->screenWidth
+            );
+            $this->settings[SettingsKey::SCREEN_HEIGHT->value] = self::resolveIntSettingValue(
+                $settings[SettingsKey::SCREEN_HEIGHT->value]
+                    ?? $settings['screenHeight']
+                    ?? self::resolveConfiguredSetting(
+                        'SCREEN_HEIGHT',
+                        ['player.screen.height', 'screenHeight', SettingsKey::SCREEN_HEIGHT->value],
+                        $this->screenHeight
+                    ),
+                $this->screenHeight
+            );
             $this->settings[SettingsKey::FPS->value] = $settings[SettingsKey::FPS->value] ?? DEFAULT_FPS;
             $this->settings[SettingsKey::ASSETS_DIR->value] = $settings[SettingsKey::ASSETS_DIR->value] ?? getcwd() . DEFAULT_ASSETS_PATH;
 
@@ -791,6 +817,34 @@ class Game implements ObservableInterface
         }
 
         return $default;
+    }
+
+    /**
+     * Resolve an integer setting from the environment first, then the app config file.
+     *
+     * @param string $envKey The environment variable name.
+     * @param string[] $configPaths Candidate config paths to try.
+     * @param int $default The default value.
+     * @return int
+     */
+    private static function resolveConfiguredIntSetting(string $envKey, array $configPaths, int $default): int
+    {
+        return self::resolveIntSettingValue(
+            self::resolveConfiguredSetting($envKey, $configPaths, $default),
+            $default
+        );
+    }
+
+    /**
+     * Normalize an integer-like config value.
+     *
+     * @param mixed $value The value to normalize.
+     * @param int $default The default value.
+     * @return int
+     */
+    private static function resolveIntSettingValue(mixed $value, int $default): int
+    {
+        return is_numeric($value) ? (int)$value : $default;
     }
 
     /**
