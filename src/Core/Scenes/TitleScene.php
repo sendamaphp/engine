@@ -83,7 +83,12 @@ class TitleScene extends AbstractScene
         $this->sceneManager = SceneManager::getInstance();
         $gameName = getGameName() ?? $this->name;
 
-        $this->titleText = new Text(scene: $this, name: $gameName, position: new Vector2(0, $this->titleTopMargin), size: new Vector2(DEFAULT_SCREEN_WIDTH, 5));
+        $this->titleText = new Text(
+            scene: $this,
+            name: $gameName,
+            position: new Vector2(0, $this->titleTopMargin),
+            size: new Vector2($this->resolveScreenWidth(), 5)
+        );
         $this->titleText->setFontName(FontName::BIG->value);
         $this->setTitleText($gameName);
 
@@ -112,7 +117,7 @@ class TitleScene extends AbstractScene
      */
     private function getMenuLeftMargin(): int
     {
-        $screenWidth = $this->screenWidth ?? get_screen_width();
+        $screenWidth = $this->resolveScreenWidth();
         return (int)round($screenWidth / 2) - (int)round($this->menuWidth / 2);
     }
 
@@ -132,7 +137,8 @@ class TitleScene extends AbstractScene
     public function setTitleText(string $text): self
     {
         $this->titleText->setText($text);
-        $this->titleLeftMargin = round((get_screen_width() / 2) - ($this->titleText->getWidth() / 2));
+        $screenWidth = $this->resolveScreenWidth();
+        $this->titleLeftMargin = round(($screenWidth / 2) - ($this->titleText->getWidth() / 2));
         $this->titleTopMargin = self::TOP_MARGIN_OFFSET;
         $this->titleText->setPosition(new Vector2(round($this->titleLeftMargin), round($this->titleTopMargin)));
 
@@ -250,5 +256,39 @@ class TitleScene extends AbstractScene
 
         $this->menu->addItem($quitItem);
         return $this;
+    }
+
+    /**
+     * Resolves the screen width even while the scene is still in awake() and local scene settings are empty.
+     *
+     * @return int
+     */
+    private function resolveScreenWidth(): int
+    {
+        return $this->resolveDimension(
+            $this->screenWidth,
+            $this->sceneManager->getSettings('screen_width'),
+            $this->getSettings('screen_width'),
+            DEFAULT_SCREEN_WIDTH
+        );
+    }
+
+    /**
+     * @param mixed ...$values
+     * @return int
+     */
+    private function resolveDimension(mixed ...$values): int
+    {
+        foreach ($values as $value) {
+            if (is_int($value)) {
+                return $value;
+            }
+
+            if (is_string($value) && is_numeric($value)) {
+                return (int)$value;
+            }
+        }
+
+        return DEFAULT_SCREEN_WIDTH;
     }
 }

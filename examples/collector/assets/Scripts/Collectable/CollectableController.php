@@ -32,7 +32,16 @@ class CollectableController extends Behaviour
   #[Override]
   public function onStart(): void
   {
-    $this->getGameObject()->addComponent(Collider::class);
+    $collider = $this->getComponent(Collider::class);
+
+    if (!$collider) {
+      $collider = $this->getGameObject()->addComponent(Collider::class);
+    }
+
+    if ($collider instanceof Collider) {
+      $collider->setTrigger(true);
+    }
+
     $this->randomizePosition();
 
     if ($levelManagerGO = GameObject::find(Name::LEVEL_MANAGER->value))

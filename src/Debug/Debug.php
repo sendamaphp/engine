@@ -80,21 +80,11 @@ final class Debug
   {
     $filename = Path::join(self::getLogDirectory(),  'debug.log');
 
-    if (self::$logLevel->getPriority() > $logLevel->getPriority()) {
+    if (!self::shouldLog($logLevel)) {
       return;
     }
 
-
-    if (!file_exists($filename)) {
-      if (!is_writeable(self::getLogDirectory())) {
-        throw new DebuggingException("The directory, " . self::getLogDirectory() . ", is not writable.");
-      }
-
-      if (false === $file = fopen($filename, 'w')) {
-        throw new DebuggingException("Failed to create the debug log file.");
-      }
-      fclose($file);
-    }
+    self::ensureLogFile($filename, 'debug');
 
     $message = sprintf("[%s] %s - %s", date('Y-m-d H:i:s'), $prefix, $message) . PHP_EOL;
     if (false === error_log($message, 3, $filename)) {
@@ -111,23 +101,13 @@ final class Debug
    */
   public static function error(string $message, string $prefix = '[ERROR]'): void
   {
-    if (self::$logLevel->getPriority() > LogLevel::ERROR->getPriority()) {
+    if (!self::shouldLog(LogLevel::ERROR)) {
       return;
     }
 
     $filename = Path::join(self::getLogDirectory(),  'error.log');
 
-    if (!file_exists($filename)) {
-      if (!is_writeable(self::getLogDirectory())) {
-        throw new DebuggingException("The directory, " . self::getLogDirectory() . ", is not writable.");
-      }
-
-      if (false === $file = fopen($filename, 'w')) {
-        throw new DebuggingException("Failed to create the error log file.");
-      }
-
-      fclose($file);
-    }
+    self::ensureLogFile($filename, 'error');
 
     $message = sprintf("[%s] %s - %s", date('Y-m-d H:i:s'), $prefix, $message) . PHP_EOL;
     if (false === error_log($message, 3, $filename)) {
@@ -155,5 +135,44 @@ final class Debug
   public static function info(string $message, ?string $prefix = null): void
   {
     self::log($message, $prefix ?? '[INFO]', LogLevel::INFO);
+  }
+
+  /**
+   * Determines whether a message at the given level should be logged.
+   *
+   * @param LogLevel $messageLevel The level of the message being logged.
+   * @return bool
+   */
+  private static function shouldLog(LogLevel $messageLevel): bool
+  {
+    return $messageLevel->getPriority() >= self::$logLevel->getPriority();
+  }
+
+  /**
+   * Ensures the log directory and file exist before writing.
+   *
+   * @param string $filename The file to create if needed.
+   * @param string $type The type of log being created.
+   * @return void
+   */
+  private static function ensureLogFile(string $filename, string $type): void
+  {
+    $directory = self::getLogDirectory();
+
+    if (!file_exists($directory) && !mkdir($directory, 0777, true) && !is_dir($directory)) {
+      throw new DebuggingException("Failed to create the log directory at $directory.");
+    }
+
+    if (!is_writeable($directory)) {
+      throw new DebuggingException("The directory, $directory, is not writable.");
+    }
+
+    if (!file_exists($filename)) {
+      if (false === $file = fopen($filename, 'w')) {
+        throw new DebuggingException("Failed to create the $type log file.");
+      }
+
+      fclose($file);
+    }
   }
 }

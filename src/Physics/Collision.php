@@ -4,6 +4,7 @@ namespace Sendama\Engine\Physics;
 
 use Sendama\Engine\Core\GameObject;
 use Sendama\Engine\Core\Transform;
+use Sendama\Engine\Physics\Interfaces\ColliderInterface;
 use Sendama\Engine\Physics\Interfaces\CollisionInterface;
 
 /**
@@ -17,11 +18,11 @@ class Collision implements CollisionInterface
   /**
    * Collision constructor.
    *
-   * @param Collider<T> $collider The collider that collided.
+   * @param ColliderInterface<T> $collider The collider that collided.
    * @param ContactPoint<T>[] $contacts The contacts of the collision.
    */
   public function __construct(
-    protected Collider $collider,
+    protected ColliderInterface $collider,
     protected array $contacts
   )
   {

@@ -75,7 +75,7 @@ composer require sendamaphp/engine
 ```
 
 ## Usage
-See [examples](examples/EXAMPLES.md) and [Documentation](docs/DOCS.md).
+See [examples](examples/EXAMPLES.md), [Documentation](docs/DOCS.md), and the [Collision Detection Guide](docs/Collision.md).
 
 ## Notes
 The examples in [examples]() are made to demonstrate how Sendama may be used to make simple 2D games.

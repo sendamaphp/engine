@@ -448,19 +448,14 @@ abstract class AbstractScene implements SceneInterface
             return;
         }
 
-        // Parse the tile map data
-        $buffer = new Grid();
         $lines = explode("\n", $this->environmentTileMapData);
 
         foreach ($lines as $y => $line) {
             $lineLength = strlen($line);
             for ($x = 0; $x < $lineLength; $x++) {
-                $buffer->set($x, $y, $line[$x]);
+                $this->worldsSpace->set($x, $y, $line[$x]);
             }
         }
-
-        // Fill the world space with the static tiles
-        $this->setWorldSpace($buffer);
 
         $this->camera->renderWorldSpace();
     }
@@ -542,7 +537,11 @@ abstract class AbstractScene implements SceneInterface
      */
     public function getSettings(?string $key): mixed
     {
-        return $this->settings[$key] ?? $this->settings;
+        if ($key === null) {
+            return $this->settings;
+        }
+
+        return array_key_exists($key, $this->settings) ? $this->settings[$key] : null;
     }
 
     /**

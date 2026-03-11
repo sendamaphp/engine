@@ -5,7 +5,7 @@ namespace Sendama\Engine\Physics;
 use Sendama\Engine\Core\Component;
 use Sendama\Engine\Physics\Interfaces\ColliderInterface;
 use Sendama\Engine\Physics\Interfaces\CollisionDetectionStrategyInterface;
-use Sendama\Engine\Physics\Strategies\SimpleCollisionDetectionStrategy;
+use Sendama\Engine\Physics\Strategies\AABBCollisionDetectionStrategy;
 use Sendama\Engine\Physics\Traits\BoundTrait;
 
 /**
@@ -30,7 +30,7 @@ class Rigidbody extends Component implements ColliderInterface
    */
   public function onStart(): void
   {
-    $this->collisionDetectionStrategy = new SimpleCollisionDetectionStrategy($this);
+    $this->collisionDetectionStrategy = new AABBCollisionDetectionStrategy($this);
   }
 
   /**

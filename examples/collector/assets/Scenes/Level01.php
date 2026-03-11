@@ -36,12 +36,12 @@ class Level01 extends AbstractScene
     $apple = new GameObject(Name::APPLE->value);
 
     // GUI Elements
-    $collectedLabel = new Label($this, 'Collected Label', new Vector2(0, 27), new Vector2(15, 1));
-    $collected = 0;
-    $collectedLabel->setText(sprintf("%-12s %03d", 'Collected: ',$collected));
-
-    $stepsLabel = new Label($this, 'Steps Label', new Vector2(65, 27), new Vector2(15, 1));
-    $stepsLabel->setText(sprintf("%-9s %06d", 'Steps: ', 0));
+//    $collectedLabel = new Label($this, 'Collected Label', new Vector2(0, 27), new Vector2(15, 1));
+//    $collected = 0;
+//    $collectedLabel->setText(sprintf("%-12s %03d", 'Collected: ',$collected));
+//
+//    $stepsLabel = new Label($this, 'Steps Label', new Vector2(65, 27), new Vector2(15, 1));
+//    $stepsLabel->setText(sprintf("%-9s %06d", 'Steps: ', 0));
 
     // Set up the level manager
     $levelManager->addComponent(LevelManager::class);
@@ -82,7 +82,5 @@ class Level01 extends AbstractScene
     $this->add($levelManager);
     $this->add($player);
     $this->add($apple);
-    $this->add($collectedLabel);
-    $this->add($stepsLabel);
   }
 }

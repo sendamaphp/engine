@@ -116,7 +116,7 @@ class Sprite implements Serializable
 
         if (!isset($pixels[$row][$column])) {
           $pixels[$row][$column] = ' ';
-          Debug::warn("Pixel column $column does not exist - "  . json_encode($pixels[$row], JSON_PRETTY_PRINT));
+          Debug::warn("Sprite: Pixel column $column does not exist - "  . json_encode($pixels[$row], JSON_PRETTY_PRINT));
         }
 
         if (!isset($buffer[$y])) {

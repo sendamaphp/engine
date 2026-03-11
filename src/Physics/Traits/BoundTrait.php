@@ -17,32 +17,14 @@ trait BoundTrait
    */
   public function getBoundingBox(): Rect
   {
-    $x =
-      $this->getTransform()
-        ->getPosition()
-        ->getX() +
-      $this->getGameObject()
-        ->getSprite()
-        ->getPivot()
-        ->getX() -
-      $this->getGameObject()
-        ->getSprite()
-        ->getRect()
-        ->getX();
-    $y =
-      $this->getTransform()
-        ->getPosition()
-        ->getY() +
-      $this->getGameObject()
-        ->getSprite()
-        ->getPivot()
-        ->getY() -
-      $this->getGameObject()
-        ->getSprite()
-        ->getRect()
-        ->getY();
+    $x = $this->getTransform()
+      ->getPosition()
+      ->getX();
+    $y = $this->getTransform()
+      ->getPosition()
+      ->getY();
     return new Rect(
-      new Vector2($x,$y),
+      new Vector2($x, $y),
       new Vector2(
         $this->getGameObject()->getSprite()->getRect()->getWidth(),
         $this->getGameObject()->getSprite()->getRect()->getHeight()

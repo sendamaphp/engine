@@ -22,7 +22,7 @@ class BasicCollisionDetectionStrategy extends AbstractCollisionDetectionStrategy
    */
   public function isTouching(ColliderInterface $collider): bool
   {
-    if ($this->collider->getGameObject()->getName() === $collider->getGameObject()->getName()) {
+    if ($this->collider === $collider || $this->collider->getGameObject() === $collider->getGameObject()) {
       return false;
     }
 
