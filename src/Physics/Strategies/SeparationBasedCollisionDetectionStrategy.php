@@ -22,6 +22,10 @@ class SeparationBasedCollisionDetectionStrategy extends AbstractCollisionDetecti
    */
   public function isTouching(ColliderInterface $collider): bool
   {
+    if ($this->collider === $collider || $this->collider->getGameObject() === $collider->getGameObject()) {
+      return false;
+    }
+
     return Vector2::distance(
       $this->collider->getTransform()->getPosition(),
       $collider->getTransform()->getPosition()

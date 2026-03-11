@@ -6,11 +6,16 @@ use Sendama\Engine\Core\Component;
 use Sendama\Engine\Core\GameObject;
 use Sendama\Engine\Core\Interfaces\CanRender;
 use Sendama\Engine\Core\Sprite;
+use Sendama\Engine\Core\Scenes\SceneManager;
 use Sendama\Engine\IO\Console\Console;
 use Sendama\Engine\IO\Console\Cursor;
 
 class Renderer extends Component implements CanRender
 {
+  /**
+   * @var array{x: int, y: int, width: int, height: int}|null
+   */
+  protected ?array $lastRenderedBounds = null;
   /**
    * The console cursor.
    *
@@ -59,30 +64,7 @@ class Renderer extends Component implements CanRender
    */
   public final function render(): void
   {
-    if (!$this->sprite) {
-      return;
-    }
-
-    $xOffset = $this->getGameObject()->getTransform()->getPosition()->getX();
-    $yOffset = $this->getGameObject()->getTransform()->getPosition()->getY();
-    $spriteBufferedImage = $this->sprite->getBufferedImage();
-
-    for ($y = 0; $y < $this->sprite->getRect()->getHeight(); $y++) {
-      for ($x = 0; $x < $this->sprite->getRect()->getWidth(); $x++) {
-        $targetX = max(1, $xOffset + $x);
-        $targetY = max(1, $yOffset + $y);
-
-        if ($targetX < 0 || $targetY < 0) {
-          continue;
-        }
-
-        // Move the console cursor to the position of the sprite.
-        $this->consoleCursor->moveTo($targetX, $targetY);
-
-        // Render the sprite.
-        echo $spriteBufferedImage[$y][$x];
-      }
-    }
+    $this->renderAt();
   }
 
   /**
@@ -90,7 +72,28 @@ class Renderer extends Component implements CanRender
    */
   public final function renderAt(?int $x = null, ?int $y = null): void
   {
-    // Do nothing.
+    if (!$this->sprite) {
+      return;
+    }
+
+    $xOffset = $this->getGameObject()->getTransform()->getPosition()->getX() + ($x ?? 0);
+    $yOffset = $this->getGameObject()->getTransform()->getPosition()->getY() + ($y ?? 0);
+    $spriteBufferedImage = $this->sprite->getBufferedImage();
+
+    for ($row = 0; $row < $this->sprite->getRect()->getHeight(); $row++) {
+      Console::write(
+        implode($spriteBufferedImage[$row] ?? []),
+        $xOffset,
+        $yOffset + $row
+      );
+    }
+
+    $this->lastRenderedBounds = [
+      'x' => $xOffset,
+      'y' => $yOffset,
+      'width' => $this->sprite->getRect()->getWidth(),
+      'height' => $this->sprite->getRect()->getHeight(),
+    ];
   }
 
   /**
@@ -98,29 +101,7 @@ class Renderer extends Component implements CanRender
    */
   public final function erase(): void
   {
-    if (!$this->sprite) {
-      return;
-    }
-
-    $xOffset = $this->getGameObject()->getTransform()->getPosition()->getX();
-    $yOffset = $this->getGameObject()->getTransform()->getPosition()->getY();
-
-    for ($y = 0; $y < $this->sprite->getRect()->getHeight(); $y++) {
-      for ($x = 0; $x < $this->sprite->getRect()->getWidth(); $x++) {
-        $targetX = max(1, $xOffset + $x);
-        $targetY = max(1, $yOffset + $y);
-
-        if ($targetX < 0 || $targetY < 0) {
-          continue;
-        }
-
-        // Move the console cursor to the position of the sprite.
-        Console::cursor()->moveTo($targetX, $targetY);
-
-        // Erase the sprite.
-        echo ' ';
-      }
-    }
+    $this->eraseAt();
   }
 
   /**
@@ -128,6 +109,46 @@ class Renderer extends Component implements CanRender
    */
   public final function eraseAt(?int $x = null, ?int $y = null): void
   {
-    // Do nothing.
+    if (!$this->sprite || !$this->lastRenderedBounds) {
+      return;
+    }
+
+    $xOffset = $this->lastRenderedBounds['x'];
+    $yOffset = $this->lastRenderedBounds['y'];
+    $width = $this->lastRenderedBounds['width'];
+    $height = $this->lastRenderedBounds['height'];
+
+    for ($row = 0; $row < $height; $row++) {
+      Console::write(
+        $this->getBackgroundRowSegment($xOffset, $yOffset + $row, $width),
+        $xOffset,
+        $yOffset + $row
+      );
+    }
+
+    $this->lastRenderedBounds = null;
+  }
+
+  /**
+   * Returns the static world-space row segment underneath the sprite.
+   *
+   * @param int $xOffset
+   * @param int $yOffset
+   * @param int $width
+   * @return string
+   */
+  private function getBackgroundRowSegment(int $xOffset, int $yOffset, int $width): string
+  {
+    $worldRows = SceneManager::getInstance()->getActiveScene()?->getWorldSpace()->toArray() ?? [];
+    $worldY = max(0, $yOffset - 1);
+    $startX = max(0, $xOffset - 1);
+    $buffer = '';
+
+    for ($column = 0; $column < $width; $column++) {
+      $worldX = $startX + $column;
+      $buffer .= $worldRows[$worldY][$worldX] ?? ' ';
+    }
+
+    return $buffer;
   }
 }

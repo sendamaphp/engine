@@ -206,8 +206,10 @@ class Camera implements CameraInterface
   public function renderWorldSpace(): void
   {
     Console::clear();
-    $this->cursor->moveTo(0, 0);
-
-    echo $this->scene->getWorldSpace();
+    Console::writeLines(
+      explode("\n", (string)$this->scene->getWorldSpace()),
+      1,
+      1
+    );
   }
 }

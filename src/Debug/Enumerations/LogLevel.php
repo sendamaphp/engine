@@ -16,16 +16,18 @@ enum LogLevel: string
   /**
    * Returns the priority of the log level.
    *
+   * Higher numbers represent more severe log levels.
+   *
    * @return int The priority of the log level.
    */
   public function getPriority(): int
   {
     return match ($this) {
-      LogLevel::FATAL => 0,
-      LogLevel::ERROR => 1,
+      LogLevel::DEBUG => 0,
+      LogLevel::INFO  => 1,
       LogLevel::WARN  => 2,
-      LogLevel::INFO  => 3,
-      LogLevel::DEBUG => 4,
+      LogLevel::ERROR => 3,
+      LogLevel::FATAL => 4,
     };
   }
 }

@@ -197,13 +197,7 @@ class InputManager
    */
   public static function isAnyKeyPressed(array $keyCodes, bool $ignoreCase = true): bool
   {
-    foreach ($keyCodes as $keyCode) {
-      if (self::isKeyDown($keyCode, $ignoreCase)) {
-        return true;
-      }
-    }
-
-    return false;
+      return array_any($keyCodes, fn($keyCode) => self::isKeyDown($keyCode, $ignoreCase));
   }
 
   /**
@@ -235,12 +229,7 @@ class InputManager
    */
   public static function areAllKeysPressed(array $keyCodes): bool
   {
-    foreach ($keyCodes as $keyCode) {
-      if (!self::isKeyPressed($keyCode)) {
-        return false;
-      }
-    }
-    return true;
+      return array_all($keyCodes, fn($keyCode) => self::isKeyPressed($keyCode));
   }
 
   /**
@@ -262,13 +251,7 @@ class InputManager
    */
   public static function isAnyKeyReleased(array $keyCodes): bool
   {
-    foreach ($keyCodes as $keyCode) {
-      if (self::isKeyUp($keyCode)) {
-        return true;
-      }
-    }
-
-    return false;
+      return array_any($keyCodes, fn($keyCode) => self::isKeyUp($keyCode));
   }
 
   /**

@@ -302,7 +302,12 @@ class Game implements ObservableInterface
             is_string($key) => $key,
             default => $key->value
         };
-        return $this->settings[$key] ?? $this->settings;
+
+        if ($key === null) {
+            return $this->settings;
+        }
+
+        return array_key_exists($key, $this->settings) ? $this->settings[$key] : null;
     }
 
     /**
@@ -373,18 +378,34 @@ class Game implements ObservableInterface
         }
 
         $this->settings[SettingsKey::GAME_NAME->value] = $_ENV['GAME_NAME'] ?? $this->name;
-        $this->settings[SettingsKey::SCREEN_WIDTH->value] = $this->screenWidth;
-        $this->settings[SettingsKey::SCREEN_HEIGHT->value] = $this->screenHeight;
+        $this->settings[SettingsKey::SCREEN_WIDTH->value] = self::resolveConfiguredIntSetting(
+            'SCREEN_WIDTH',
+            ['player.screen.width', 'screenWidth', SettingsKey::SCREEN_WIDTH->value],
+            $this->screenWidth
+        );
+        $this->settings[SettingsKey::SCREEN_HEIGHT->value] = self::resolveConfiguredIntSetting(
+            'SCREEN_HEIGHT',
+            ['player.screen.height', 'screenHeight', SettingsKey::SCREEN_HEIGHT->value],
+            $this->screenHeight
+        );
         $this->settings[SettingsKey::FPS->value] = DEFAULT_FPS;
         $this->settings[SettingsKey::ASSETS_DIR->value] = Path::join(getcwd(), DEFAULT_ASSETS_PATH);
 
         $this->settings[SettingsKey::INITIAL_SCENE->value] = null;
 
         // Load environment settings
-        $this->settings[SettingsKey::DEBUG->value] = $_ENV['DEBUG_MODE'] ?? false;
-        $this->settings[SettingsKey::DEBUG_INFO->value] = $_ENV['SHOW_DEBUG_INFO'] ?? false;
-        $this->settings[SettingsKey::LOG_LEVEL->value] = $_ENV['LOG_LEVEL'] ?? 'info';
-        Debug::setLogLevel(LogLevel::tryFrom($this->getSettings('log_level')) ?? LogLevel::DEBUG);
+        $this->settings[SettingsKey::DEBUG->value] = self::resolveConfiguredSetting(
+            'DEBUG_MODE',
+            [SettingsKey::DEBUG->value, 'debugMode'],
+            false
+        );
+        $this->settings[SettingsKey::DEBUG_INFO->value] = self::resolveConfiguredSetting(
+            'SHOW_DEBUG_INFO',
+            ['showDebugInfo', SettingsKey::DEBUG_INFO->value, 'show_debug_info', 'debug.showInfo', 'debug.showDebugInfo'],
+            false
+        );
+        $this->settings[SettingsKey::LOG_LEVEL->value] = $_ENV['LOG_LEVEL'] ?? DEFAULT_LOG_LEVEL;
+        Debug::setLogLevel(LogLevel::tryFrom((string)$this->getSettings('log_level')) ?? LogLevel::DEBUG);
 
         $this->settings[SettingsKey::LOG_DIR->value] = Path::join(getcwd(), DEFAULT_LOGS_DIR);
         Debug::info("Log directory initialized: {$this->settings[SettingsKey::LOG_DIR->value]}");
@@ -419,18 +440,60 @@ class Game implements ObservableInterface
     public function loadSettings(?array $settings = null): self
     {
         try {
+            $settings ??= [];
+
+            $this->settings[SettingsKey::LOG_LEVEL->value] = $settings[SettingsKey::LOG_LEVEL->value]
+                ?? $_ENV['LOG_LEVEL']
+                ?? $this->settings[SettingsKey::LOG_LEVEL->value]
+                ?? DEFAULT_LOG_LEVEL;
+            $this->settings[SettingsKey::LOG_DIR->value] = $settings[SettingsKey::LOG_DIR->value]
+                ?? $_ENV['LOG_DIR']
+                ?? $this->settings[SettingsKey::LOG_DIR->value]
+                ?? Path::join(getcwd(), DEFAULT_LOGS_DIR);
+
+            Debug::setLogDirectory($this->settings[SettingsKey::LOG_DIR->value]);
+            Debug::setLogLevel(LogLevel::tryFrom((string)$this->settings[SettingsKey::LOG_LEVEL->value]) ?? LogLevel::DEBUG);
+
             Debug::info("Loading environment settings");
             // Environment
-            $this->settings[SettingsKey::DEBUG->value] = $_ENV['DEBUG_MODE'] ?? false;
-            $this->settings[SettingsKey::DEBUG_INFO->value] = $_ENV['SHOW_DEBUG_INFO'] ?? false;
-            $this->settings[SettingsKey::LOG_LEVEL->value] = $_ENV['LOG_LEVEL'] ?? DEFAULT_LOG_LEVEL;
-            $this->settings[SettingsKey::LOG_DIR->value] = $_ENV['LOG_DIR'] ?? Path::join(getcwd(), DEFAULT_LOGS_DIR);
-
+            $this->settings[SettingsKey::DEBUG->value] = $settings[SettingsKey::DEBUG->value]
+                ?? $settings['debugMode']
+                ?? self::resolveConfiguredSetting(
+                    'DEBUG_MODE',
+                    [SettingsKey::DEBUG->value, 'debugMode'],
+                    false
+                );
+            $this->settings[SettingsKey::DEBUG_INFO->value] = $settings[SettingsKey::DEBUG_INFO->value]
+                ?? $settings['showDebugInfo']
+                ?? $settings['show_debug_info']
+                ?? self::resolveConfiguredSetting(
+                    'SHOW_DEBUG_INFO',
+                    ['showDebugInfo', SettingsKey::DEBUG_INFO->value, 'show_debug_info', 'debug.showInfo', 'debug.showDebugInfo'],
+                    false
+                );
             Debug::info("Loading game settings");
             // Game
             $this->settings[SettingsKey::GAME_NAME->value] = $settings[SettingsKey::GAME_NAME->value] ?? $this->name;
-            $this->settings[SettingsKey::SCREEN_WIDTH->value] = $settings[SettingsKey::SCREEN_WIDTH->value] ?? $this->screenWidth;
-            $this->settings[SettingsKey::SCREEN_HEIGHT->value] = $settings[SettingsKey::SCREEN_HEIGHT->value] ?? $this->screenHeight;
+            $this->settings[SettingsKey::SCREEN_WIDTH->value] = self::resolveIntSettingValue(
+                $settings[SettingsKey::SCREEN_WIDTH->value]
+                    ?? $settings['screenWidth']
+                    ?? self::resolveConfiguredSetting(
+                        'SCREEN_WIDTH',
+                        ['player.screen.width', 'screenWidth', SettingsKey::SCREEN_WIDTH->value],
+                        $this->screenWidth
+                    ),
+                $this->screenWidth
+            );
+            $this->settings[SettingsKey::SCREEN_HEIGHT->value] = self::resolveIntSettingValue(
+                $settings[SettingsKey::SCREEN_HEIGHT->value]
+                    ?? $settings['screenHeight']
+                    ?? self::resolveConfiguredSetting(
+                        'SCREEN_HEIGHT',
+                        ['player.screen.height', 'screenHeight', SettingsKey::SCREEN_HEIGHT->value],
+                        $this->screenHeight
+                    ),
+                $this->screenHeight
+            );
             $this->settings[SettingsKey::FPS->value] = $settings[SettingsKey::FPS->value] ?? DEFAULT_FPS;
             $this->settings[SettingsKey::ASSETS_DIR->value] = $settings[SettingsKey::ASSETS_DIR->value] ?? getcwd() . DEFAULT_ASSETS_PATH;
 
@@ -447,8 +510,6 @@ class Game implements ObservableInterface
 
             // Debug settings
             Debug::info('Loading debug settings');
-            Debug::setLogDirectory($this->getSettings('log_dir'));
-            Debug::setLogLevel(LogLevel::tryFrom($this->getSettings('log_level')) ?? LogLevel::DEBUG);
             $this->debugWindow->setPosition([0, $this->settings[SettingsKey::SCREEN_HEIGHT->value] - self::DEBUG_WINDOW_HEIGHT]);
 
             // Input settings
@@ -486,14 +547,13 @@ class Game implements ObservableInterface
      */
     protected function configureWindowChangeSignalHandler(): void
     {
+        pcntl_async_signals(true);
         pcntl_signal(SIGWINCH, function () {
-            $terminalSize = Console::getSize();
-            $currentScreenWidth = $terminalSize->getWidth();
-            $currentScreenHeight = $terminalSize->getHeight();
-
-            $this->screenWidth = min($currentScreenWidth, $this->screenWidth, DEFAULT_SCREEN_WIDTH);
-            $this->screenHeight = min($currentScreenHeight, $this->screenHeight, DEFAULT_SCREEN_HEIGHT);
-
+            Console::refreshLayout(
+                (int)$this->getSettings(SettingsKey::SCREEN_WIDTH->value),
+                (int)$this->getSettings(SettingsKey::SCREEN_HEIGHT->value),
+                Console::getSize(force: true)
+            );
             Debug::info("SIGWINCH received");
         });
     }
@@ -580,6 +640,11 @@ class Game implements ObservableInterface
 
         // Set the terminal size
         Console::setSize($this->getSettings('screen_width'), $this->getSettings('screen_height'));
+        Console::refreshLayout(
+            (int)$this->getSettings(SettingsKey::SCREEN_WIDTH->value),
+            (int)$this->getSettings(SettingsKey::SCREEN_HEIGHT->value),
+            Console::getSize(force: true)
+        );
 
         // Hide the cursor
         $this->consoleCursor->hide();
@@ -683,6 +748,10 @@ class Game implements ObservableInterface
     private function render(): void
     {
         $this->frameCount++;
+        Console::refreshLayout(
+            (int)$this->getSettings(SettingsKey::SCREEN_WIDTH->value),
+            (int)$this->getSettings(SettingsKey::SCREEN_HEIGHT->value)
+        );
         $this->state->render();
         $this->uiManager->render();
         $this->renderDebugInfo();
@@ -711,20 +780,85 @@ class Game implements ObservableInterface
      */
     private function isDebug(): bool
     {
-        return match (gettype($this->getSettings('debug'))) {
-            'boolean' => $this->getSettings('debug'),
-            'string' => strtolower($this->getSettings('debug')) === 'true',
-            'integer' => $this->getSettings('debug') === 1,
-            default => false
-        };
+        return self::isTruthySetting($this->getSettings(SettingsKey::DEBUG));
     }
 
     private function showDebugInfo(): bool
     {
-        return match (gettype($this->getSettings('debug_info'))) {
-            'boolean' => $this->getSettings('debug_info'),
-            'string' => strtolower($this->getSettings('debug_info')) === 'true',
-            'integer' => $this->getSettings('debug_info') === 1,
+        return self::isTruthySetting($this->getSettings(SettingsKey::DEBUG_INFO));
+    }
+
+    /**
+     * Resolve a setting from the environment first, then the app config file.
+     *
+     * @param string $envKey The environment variable name.
+     * @param string[] $configPaths Candidate config paths to try.
+     * @param mixed $default The default value.
+     * @return mixed
+     */
+    private static function resolveConfiguredSetting(string $envKey, array $configPaths, mixed $default = null): mixed
+    {
+        if (array_key_exists($envKey, $_ENV)) {
+            return $_ENV[$envKey];
+        }
+
+        if (ConfigStore::doesntHave(AppConfig::class)) {
+            return $default;
+        }
+
+        $config = ConfigStore::get(AppConfig::class);
+
+        foreach ($configPaths as $path) {
+            $value = $config->get($path);
+
+            if ($value !== null) {
+                return $value;
+            }
+        }
+
+        return $default;
+    }
+
+    /**
+     * Resolve an integer setting from the environment first, then the app config file.
+     *
+     * @param string $envKey The environment variable name.
+     * @param string[] $configPaths Candidate config paths to try.
+     * @param int $default The default value.
+     * @return int
+     */
+    private static function resolveConfiguredIntSetting(string $envKey, array $configPaths, int $default): int
+    {
+        return self::resolveIntSettingValue(
+            self::resolveConfiguredSetting($envKey, $configPaths, $default),
+            $default
+        );
+    }
+
+    /**
+     * Normalize an integer-like config value.
+     *
+     * @param mixed $value The value to normalize.
+     * @param int $default The default value.
+     * @return int
+     */
+    private static function resolveIntSettingValue(mixed $value, int $default): int
+    {
+        return is_numeric($value) ? (int)$value : $default;
+    }
+
+    /**
+     * Normalize mixed config values to booleans.
+     *
+     * @param mixed $value The value to normalize.
+     * @return bool
+     */
+    private static function isTruthySetting(mixed $value): bool
+    {
+        return match (gettype($value)) {
+            'boolean' => $value,
+            'string' => in_array(strtolower($value), ['true', '1', 'yes', 'on'], true),
+            'integer' => $value === 1,
             default => false
         };
     }

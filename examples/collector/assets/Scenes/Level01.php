@@ -6,7 +6,7 @@ use Sendama\Engine\Core\Behaviours\CharacterMovement;
 use Sendama\Engine\Core\GameObject;
 use Sendama\Engine\Core\Scenes\AbstractScene;
 use Sendama\Engine\Core\Sprite;
-use Sendama\Engine\Core\Texture2D;
+use Sendama\Engine\Core\Texture;
 use Sendama\Engine\Core\Vector2;
 use Sendama\Engine\Physics\CharacterController;
 use Sendama\Engine\Physics\Collider;
@@ -36,12 +36,12 @@ class Level01 extends AbstractScene
     $apple = new GameObject(Name::APPLE->value);
 
     // GUI Elements
-    $collectedLabel = new Label($this, 'Collected Label', new Vector2(0, 27), new Vector2(15, 1));
-    $collected = 0;
-    $collectedLabel->setText(sprintf("%-12s %03d", 'Collected: ',$collected));
-
-    $stepsLabel = new Label($this, 'Steps Label', new Vector2(65, 27), new Vector2(15, 1));
-    $stepsLabel->setText(sprintf("%-9s %06d", 'Steps: ', 0));
+//    $collectedLabel = new Label($this, 'Collected Label', new Vector2(0, 27), new Vector2(15, 1));
+//    $collected = 0;
+//    $collectedLabel->setText(sprintf("%-12s %03d", 'Collected: ',$collected));
+//
+//    $stepsLabel = new Label($this, 'Steps Label', new Vector2(65, 27), new Vector2(15, 1));
+//    $stepsLabel->setText(sprintf("%-9s %06d", 'Steps: ', 0));
 
     // Set up the level manager
     $levelManager->addComponent(LevelManager::class);
@@ -56,7 +56,7 @@ class Level01 extends AbstractScene
 
     $playerStartingX = 4;
     $playerStartingY = $screenHeight / 2;
-    $playerTexture = new Texture2D('Textures/player.texture');
+    $playerTexture = new Texture('Textures/player.texture');
     $player->getTransform()->setPosition(new Vector2($playerStartingX, $playerStartingY));
     /**
      * @var CharacterMovement $playerMovementController
@@ -73,7 +73,7 @@ class Level01 extends AbstractScene
     $player->setSpriteFromTexture($playerTexture, Vector2::zero(), Vector2::one());
 
     // Set up the apple
-    $appleTexture = new Texture2D('Textures/apple.texture');
+    $appleTexture = new Texture('Textures/apple.texture');
     $apple->addComponent(CollectableController::class);
     $apple->addComponent(Collider::class);
     $apple->setSpriteFromTexture($appleTexture, Vector2::zero(), Vector2::one());
@@ -82,7 +82,5 @@ class Level01 extends AbstractScene
     $this->add($levelManager);
     $this->add($player);
     $this->add($apple);
-    $this->add($collectedLabel);
-    $this->add($stepsLabel);
   }
 }

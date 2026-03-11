@@ -65,6 +65,45 @@ class GameObject implements GameObjectInterface
     }
 
     /**
+     * Serializes the game object into an array.
+     *
+     * @return array<string, mixed> The serialized game object.
+     */
+    public function __serialize(): array
+    {
+        return [
+            "hash" => $this->hash,
+            "name" => $this->name,
+            "tag" => $this->tag,
+            "position" => $this->position,
+            "rotation" => $this->rotation,
+            "scale" => $this->scale,
+            "transform" => $this->transform,
+            "render" => $this->renderer,
+            "sprite" => $this->sprite,
+        ];
+    }
+
+    /**
+     * Unserializes the game object from an array.
+     *
+     * @param array<string, mixed> $data The data to unserialize the game object from.
+     * @return void
+     */
+    public function __unserialize(array $data): void
+    {
+        $this->name = $data["name"];
+        $this->tag = $data["tag"];
+        $this->position = $data["position"];
+        $this->rotation = $data["rotation"];
+        $this->scale = $data["scale"];
+        $this->transform = $data["transform"];
+        $this->renderer = $data["render"];
+        $this->sprite = $data["sprite"];
+        $this->hash = $data["hash"] ?? md5(__CLASS__) . '-' . uniqid($data["name"] ?? 'GameObject', true);
+    }
+
+    /**
      * Clones the original game object and returns the clone.
      *
      * @param GameObject $original The original game object to clone.

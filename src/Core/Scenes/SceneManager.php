@@ -21,6 +21,7 @@ use Sendama\Engine\Events\SceneEvent;
 use Sendama\Engine\Exceptions\IncorrectComponentTypeException;
 use Sendama\Engine\Exceptions\Scenes\SceneManagementException;
 use Sendama\Engine\Exceptions\Scenes\SceneNotFoundException;
+use Sendama\Engine\Physics\Collider;
 use Sendama\Engine\Physics\Interfaces\ColliderInterface;
 use Sendama\Engine\Physics\Physics;
 use Sendama\Engine\UI\Label\Label;
@@ -299,7 +300,11 @@ final class SceneManager implements SingletonInterface, CanStart, CanResume, Can
      */
     public function getSettings(?string $key = null): mixed
     {
-        return $this->settings[$key] ?? $this->settings;
+        if ($key === null) {
+            return $this->settings;
+        }
+
+        return array_key_exists($key, $this->settings) ? $this->settings[$key] : null;
     }
 
     /**
@@ -350,6 +355,10 @@ final class SceneManager implements SingletonInterface, CanStart, CanResume, Can
         $sceneName = $sceneMetadata->name ?? basename($path);
 
         $scene = new class($sceneName, $sceneMetadata) extends AbstractScene {
+            /**
+             * @return void
+             * @throws SceneManagementException
+             */
             public function awake(): void
             {
                 $sceneMetadata = $this->sceneMetadata;
@@ -435,7 +444,10 @@ final class SceneManager implements SingletonInterface, CanStart, CanResume, Can
                                                     continue;
                                                 }
 
-                                                $component->$key = $value;
+                                                $component->$key = match(true) {
+                                                    $componentClass === Collider::class && $key === 'material' => null,
+                                                    default => $value
+                                                };
                                             }
                                         }
                                     }

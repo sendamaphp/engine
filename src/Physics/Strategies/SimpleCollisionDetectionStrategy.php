@@ -17,16 +17,10 @@ class SimpleCollisionDetectionStrategy extends AbstractCollisionDetectionStrateg
    */
   public function isTouching(ColliderInterface $collider): bool
   {
-    $position = $collider->getTransform()->getPosition();
-
-    if ($this->physics->isTouchingStaticObject($position)) {
-      return true;
+    if ($this->collider === $collider || $this->collider->getGameObject() === $collider->getGameObject()) {
+      return false;
     }
 
-    if ($this->physics->isTouchingDynamicObject($position)) {
-      return true;
-    }
-
-    return false;
+    return $this->collider->getBoundingBox()->overlaps($collider->getBoundingBox());
   }
 }

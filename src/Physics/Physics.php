@@ -5,6 +5,7 @@ namespace Sendama\Engine\Physics;
 use Assegai\Collections\ItemList;
 use Sendama\Engine\Core\Grid;
 use Sendama\Engine\Core\Interfaces\SingletonInterface;
+use Sendama\Engine\Core\Rect;
 use Sendama\Engine\Core\Vector2;
 use Sendama\Engine\Debug\Debug;
 use Sendama\Engine\Physics\Interfaces\ColliderInterface;
@@ -85,7 +86,7 @@ final class Physics implements SingletonInterface, SimulatorInterface
     protected function clearWorld(): void
     {
         $this->world = new Grid($this->worldWidth, $this->worldHeight);
-        $this->staticCollisionMap = new Grid($this->worldWidth, $this->worldWidth);
+        $this->staticCollisionMap = new Grid($this->worldWidth, $this->worldHeight);
     }
 
     /**
@@ -184,10 +185,21 @@ final class Physics implements SingletonInterface, SimulatorInterface
     public function checkCollisions(ColliderInterface $collider, Vector2 $motion): array
     {
         $collisions = [];
+        $projectedBounds = $this->getProjectedBounds($collider, $motion);
 
         foreach ($this->colliders as $otherCollider) {
-            if ($collider->isTouching($otherCollider)) {
-                $collisions[] = new Collision($otherCollider, [new ContactPoint(Vector2::sum($collider->getTransform()->getPosition(), $motion), $collider, $otherCollider)]);
+            if ($otherCollider === $collider || $otherCollider->getGameObject() === $collider->getGameObject()) {
+                continue;
+            }
+
+            if ($projectedBounds->overlaps($otherCollider->getBoundingBox())) {
+                $collisions[] = new Collision($otherCollider, [
+                    new ContactPoint(
+                        Vector2::sum($collider->getTransform()->getPosition(), $motion),
+                        $collider,
+                        $otherCollider
+                    )
+                ]);
             }
         }
 
@@ -224,14 +236,32 @@ final class Physics implements SingletonInterface, SimulatorInterface
      * @param Vector2 $position The position to check.
      * @return bool Whether the given position is touching a dynamic object or not.
      */
-    public function isTouchingDynamicObject(Vector2 $position): bool
+    public function isTouchingDynamicObject(Vector2 $position, ?ColliderInterface $ignoreCollider = null): bool
     {
         foreach ($this->colliders as $collider) {
-            if ($collider->getTransform()->getPosition() === $position) {
+            if ($ignoreCollider && $collider === $ignoreCollider) {
+                continue;
+            }
+
+            $otherPosition = $collider->getTransform()->getPosition();
+
+            if ($otherPosition->getX() === $position->getX() && $otherPosition->getY() === $position->getY()) {
                 return true;
             }
         }
 
         return false;
+    }
+
+    /**
+     * Returns the collider bounds after applying motion.
+     *
+     * @param ColliderInterface<T> $collider The collider to project.
+     * @param Vector2 $motion The movement to apply.
+     * @return Rect
+     */
+    private function getProjectedBounds(ColliderInterface $collider, Vector2 $motion): Rect
+    {
+        return $collider->getBoundingBox()->translated($motion);
     }
 }

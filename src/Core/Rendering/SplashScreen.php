@@ -13,7 +13,7 @@ final class SplashScreen
 {
     public function __construct(
         private readonly Cursor $consoleCursor,
-        private readonly array $settings
+        private array $settings
     )
     {
     }
