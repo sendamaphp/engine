@@ -300,7 +300,11 @@ final class SceneManager implements SingletonInterface, CanStart, CanResume, Can
      */
     public function getSettings(?string $key = null): mixed
     {
-        return $this->settings[$key] ?? $this->settings;
+        if ($key === null) {
+            return $this->settings;
+        }
+
+        return array_key_exists($key, $this->settings) ? $this->settings[$key] : null;
     }
 
     /**

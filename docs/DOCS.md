@@ -19,8 +19,9 @@
     - [Removing a Scene](#removing-a-scene)
   - [Game Objects](#game-objects)
     - [Creating a Game Object](#creating-a-game-object)
-    - [Moving a Game Object](#moving-a-game-object)
+  - [Moving a Game Object](#moving-a-game-object)
   - [Components](#components)
+- [Collision Detection Guide](Collision.md)
 
 ## Introduction
 Sendama is a 2D game engine for terminal based games. It is written in PHP and is designed to be easy to use and extend. It is a work in progress and is not yet ready for production use.

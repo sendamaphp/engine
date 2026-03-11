@@ -219,8 +219,7 @@ class Window implements WindowInterface
     // Render the top border
     $topBorderHeight = 1;
     $output = $this->getTopBorder();
-    $this->cursor->moveTo($leftMargin, $topMargin);
-    echo $output;
+    Console::writeLine($output, $leftMargin, $topMargin);
 
     // Render content
     $linesOfContent = $this->getLinesOfContent();
@@ -229,15 +228,17 @@ class Window implements WindowInterface
     }
 
     foreach ($linesOfContent as $index => $line) {
-      $this->cursor->moveTo($leftMargin, $topMargin + $index + $topBorderHeight);
-      echo mb_substr($line, 0, $this->width);
+      Console::writeLine(
+        mb_substr($line, 0, $this->width),
+        $leftMargin,
+        $topMargin + $index + $topBorderHeight
+      );
     }
 
     // Render the bottom border
     $topMargin = $topMargin + count($linesOfContent) + $topBorderHeight;
     $output = $this->getBottomBorder();
-    $this->cursor->moveTo($leftMargin, $topMargin);
-    echo $output;
+    Console::writeLine($output, $leftMargin, $topMargin);
   }
 
   /**
@@ -253,12 +254,11 @@ class Window implements WindowInterface
    */
   public function eraseAt(?int $x = null, ?int $y = null): void
   {
-    $leftMargin = $this->position->getX() + $x;
-    $topMargin = $this->position->getY() + $y;
+    $leftMargin = $this->position->getX() + ($x ?? 0);
+    $topMargin = $this->position->getY() + ($y ?? 0);
 
     for ($i = 0; $i < $this->height; $i++) {
-      $this->cursor->moveTo($leftMargin, $topMargin + $i);
-      echo str_repeat(' ', $this->width);
+      Console::writeLine(str_repeat(' ', $this->width), $leftMargin, $topMargin + $i);
     }
   }
 

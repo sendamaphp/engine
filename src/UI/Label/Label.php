@@ -37,13 +37,13 @@ class Label extends UIElement
    */
   public function setText(string $text): void
   {
-    if ($this->isActive()) {
+    if ($this->shouldRenderWithinScene()) {
       $this->erase();
     }
 
     $this->text = $text;
 
-    if ($this->isActive()) {
+    if ($this->shouldRenderWithinScene()) {
       $this->render();
     }
   }

@@ -79,6 +79,22 @@ it('allows movement through trigger colliders', function () {
     ->and($player->getTransform()->getPosition()->getY())->toBe(0);
 });
 
+it('detects vertical collisions even when the sprite comes from an offset sprite-sheet frame', function () {
+  [$player, $controller] = ($this->makeCollider)('Player', new Vector2(5, 0), CharacterController::class);
+  [, $apple] = ($this->makeCollider)('Apple', new Vector2(5, 1));
+
+  $player->setSprite(new Sprite(
+    new Texture(getcwd() . '/tests/Mocks/Textures/test.texture'),
+    ['x' => 2, 'y' => 0, 'width' => 1, 'height' => 1]
+  ));
+
+  $collisions = Physics::getInstance()->checkCollisions($controller, new Vector2(0, 1));
+
+  expect($collisions)
+    ->toHaveCount(1)
+    ->and($collisions[0]->getContact(0)?->getOtherCollider())->toBe($apple);
+});
+
 it('ignores self while still detecting different colliders on objects with the same name', function () {
   [, $firstCollider] = ($this->makeCollider)('Enemy', new Vector2(3, 3));
   [, $secondCollider] = ($this->makeCollider)('Enemy', new Vector2(3, 3));

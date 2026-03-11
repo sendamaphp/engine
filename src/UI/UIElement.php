@@ -118,7 +118,9 @@ abstract class UIElement implements UIElementInterface
      */
     public function resume(): void
     {
-        $this->render();
+        if ($this->shouldRenderWithinScene()) {
+            $this->render();
+        }
     }
 
     /**
@@ -126,7 +128,9 @@ abstract class UIElement implements UIElementInterface
      */
     public function suspend(): void
     {
-        $this->erase();
+        if ($this->shouldRenderWithinScene()) {
+            $this->erase();
+        }
     }
 
     /**
@@ -134,7 +138,9 @@ abstract class UIElement implements UIElementInterface
      */
     public function stop(): void
     {
-        $this->erase();
+        if ($this->shouldRenderWithinScene()) {
+            $this->erase();
+        }
     }
 
     /**
@@ -175,5 +181,15 @@ abstract class UIElement implements UIElementInterface
     public function setSize(Vector2 $size): void
     {
         $this->size = $size;
+    }
+
+    /**
+     * Checks whether the element should write to the console right now.
+     *
+     * @return bool
+     */
+    protected function shouldRenderWithinScene(): bool
+    {
+        return $this->isActive() && $this->scene->isStarted();
     }
 }

@@ -70,10 +70,12 @@ class PausedState extends GameState
    */
   private function renderDefaultPauseText(): void
   {
+    $activeScene = $this->sceneManager->getActiveScene();
     $promptText = 'PAUSED';
-    $leftMargin = intval(($this->game->getSettings('screen_width') / 2) - (strlen($promptText) / 2));
-    $topMargin = intval(($this->game->getSettings('screen_height') / 2) - 1);
-    Console::cursor()->moveTo($leftMargin, $topMargin);
-    echo $promptText;
+    $screenWidth = $activeScene?->getSettings('screen_width') ?? $this->game->getSettings('screen_width');
+    $screenHeight = $activeScene?->getSettings('screen_height') ?? $this->game->getSettings('screen_height');
+    $leftMargin = (int)(($screenWidth / 2) - (strlen($promptText) / 2));
+    $topMargin = (int)(($screenHeight / 2) - 1);
+    Console::write($promptText, $leftMargin, $topMargin);
   }
 }

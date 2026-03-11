@@ -19,6 +19,7 @@ use Symfony\Component\Console\Output\OutputInterface;
  */
 class Console
 {
+  private const float TERMINAL_SIZE_POLL_INTERVAL_SECONDS = 0.1;
   /**
    * @var Game|null $game The game instance.
    */
@@ -32,9 +33,33 @@ class Console
    */
   protected static int $height = DEFAULT_SCREEN_HEIGHT;
   /**
+   * @var int $logicalWidth The logical width of the game viewport.
+   */
+  protected static int $logicalWidth = DEFAULT_SCREEN_WIDTH;
+  /**
+   * @var int $logicalHeight The logical height of the game viewport.
+   */
+  protected static int $logicalHeight = DEFAULT_SCREEN_HEIGHT;
+  /**
+   * @var float $renderScale The current scale applied to logical coordinates.
+   */
+  protected static float $renderScale = 1.0;
+  /**
+   * @var int $renderOffsetX The x-offset used to center the logical viewport.
+   */
+  protected static int $renderOffsetX = 1;
+  /**
+   * @var int $renderOffsetY The y-offset used to center the logical viewport.
+   */
+  protected static int $renderOffsetY = 1;
+  /**
    * @var ConsoleOutput|null $output The console output stream
    */
   protected static ?ConsoleOutput $output = null;
+  /**
+   * @var float $lastSizeCheckAt The last time the terminal size was polled.
+   */
+  protected static float $lastSizeCheckAt = 0.0;
 
   /**
    * @var Grid<string> $buffer The buffer.
@@ -66,10 +91,11 @@ class Console
   ]): void
   {
     self::$game = $game;
+    self::$logicalWidth = $options['width'] ?? DEFAULT_SCREEN_WIDTH;
+    self::$logicalHeight = $options['height'] ?? DEFAULT_SCREEN_HEIGHT;
+    self::refreshLayout(self::$logicalWidth, self::$logicalHeight, clearWhenChanged: false);
     self::clear();
     Console::cursor()->disableBlinking();
-    self::$width = $options['width'] ?? DEFAULT_SCREEN_WIDTH;
-    self::$height = $options['height'] ?? DEFAULT_SCREEN_HEIGHT;
     self::$output = new ConsoleOutput();
   }
 
@@ -95,7 +121,7 @@ class Console
    */
   private static function getEmptyBuffer(): Grid
   {
-    return new Grid(DEFAULT_SCREEN_HEIGHT, DEFAULT_SCREEN_WIDTH, ' ');
+    return new Grid(self::$width, self::$height, ' ');
   }
 
   /**
@@ -203,12 +229,104 @@ class Console
    * @return Rect The terminal size.
    * @throws Exception If the terminal size cannot be retrieved.
    */
-  public static function getSize(): Rect
+  public static function getSize(bool $force = false): Rect
   {
-    $width = (int)trim(shell_exec("tput cols")) ?: throw new Exception('Failed to get terminal width.');
-    $height = (int)trim(shell_exec("tput lines")) ?: throw new Exception('Failed to get terminal height.');
+    if (
+      !$force &&
+      self::$lastSizeCheckAt > 0 &&
+      (microtime(true) - self::$lastSizeCheckAt) < self::TERMINAL_SIZE_POLL_INTERVAL_SECONDS
+    ) {
+      return new Rect(new Vector2(1, 1), new Vector2(self::$width, self::$height));
+    }
+
+    $width = (int)trim(shell_exec("tput cols 2>/dev/null") ?? '');
+    $height = (int)trim(shell_exec("tput lines 2>/dev/null") ?? '');
+    self::$lastSizeCheckAt = microtime(true);
+
+    if ($width < 1) {
+      $width = self::$width;
+    }
+
+    if ($height < 1) {
+      $height = self::$height;
+    }
 
     return new Rect(new Vector2(1, 1), new Vector2($width, $height));
+  }
+
+  /**
+   * Refreshes the logical viewport within the current terminal size.
+   *
+   * @param int $logicalWidth The logical width of the game.
+   * @param int $logicalHeight The logical height of the game.
+   * @param Rect|null $terminalSize The terminal size override.
+   * @param bool $clearWhenChanged Whether to clear the terminal when the layout changes.
+   * @return bool True when the layout changed.
+   */
+  public static function refreshLayout(
+    int $logicalWidth,
+    int $logicalHeight,
+    ?Rect $terminalSize = null,
+    bool $clearWhenChanged = true,
+  ): bool
+  {
+    $terminalSize ??= self::getSize();
+
+    $terminalWidth = max(1, $terminalSize->getWidth());
+    $terminalHeight = max(1, $terminalSize->getHeight());
+    $logicalWidth = max(1, $logicalWidth);
+    $logicalHeight = max(1, $logicalHeight);
+
+    $renderScale = 1.0;
+    $offsetX = (int)floor(($terminalWidth - $logicalWidth) / 2) + 1;
+    $offsetY = (int)floor(($terminalHeight - $logicalHeight) / 2) + 1;
+
+    $changed =
+      self::$width !== $terminalWidth ||
+      self::$height !== $terminalHeight ||
+      self::$logicalWidth !== $logicalWidth ||
+      self::$logicalHeight !== $logicalHeight ||
+      abs(self::$renderScale - $renderScale) > 0.0001 ||
+      self::$renderOffsetX !== $offsetX ||
+      self::$renderOffsetY !== $offsetY;
+
+    self::$width = $terminalWidth;
+    self::$height = $terminalHeight;
+    self::$logicalWidth = $logicalWidth;
+    self::$logicalHeight = $logicalHeight;
+    self::$renderScale = $renderScale;
+    self::$renderOffsetX = $offsetX;
+    self::$renderOffsetY = $offsetY;
+
+    if ($changed && $clearWhenChanged) {
+      self::clear();
+    } elseif ($changed) {
+      self::$buffer = self::getEmptyBuffer();
+    } elseif (!isset(self::$buffer)) {
+      self::$buffer = self::getEmptyBuffer();
+    }
+
+    return $changed;
+  }
+
+  /**
+   * Returns the current render offset.
+   *
+   * @return Vector2
+   */
+  public static function getRenderOffset(): Vector2
+  {
+    return new Vector2(self::$renderOffsetX, self::$renderOffsetY);
+  }
+
+  /**
+   * Returns the current uniform render scale.
+   *
+   * @return float
+   */
+  public static function getRenderScale(): float
+  {
+    return self::$renderScale;
   }
 
   /**
@@ -242,16 +360,7 @@ class Console
    */
   public static function writeChar(string $character, int $x, int $y): void
   {
-    $cursor = self::cursor();
-
-    $x = max(1, $x);
-    $y = max(1, $y);
-
-    self::$buffer->set($x, $y, substr($character, 0, 1));
-    $cursor->moveTo($x, $y);
-    echo self::$buffer->toArray()[$y][$x];
-
-    $cursor->moveTo($x + 1, $y);
+    self::write($character, $x, $y);
   }
 
   /**
@@ -264,19 +373,7 @@ class Console
    */
   public static function write(string $message, int $x, int $y): void
   {
-    $cursor = self::cursor();
-    $messageLength = strlen($message);
-
-    $x = max(1, $x);
-    $y = max(1, $y);
-
-    for ($index = 0; $index < $messageLength; ++$index) {
-      self::$buffer->set($x + $index, $y, $message[$index]);
-      $cursor->moveTo($x + $index, $y);
-      echo self::$buffer->toArray()[$y][$x + $index];
-    }
-
-    $cursor->moveTo($x + $messageLength, $y);
+    self::writeLine($message, $x, $y);
   }
 
   /**
@@ -289,16 +386,9 @@ class Console
    */
   public static function writeLines(array $linesOfText, int $x, int $y): void
   {
-    $cursor = self::cursor();
-
-    $x = max(1, $x);
-    $y = max(1, $y);
-
     foreach ($linesOfText as $rowIndex => $text) {
       self::writeLine($text, $x, $y + $rowIndex);
     }
-
-    $cursor->moveTo(0, $y);
   }
 
   /**
@@ -311,22 +401,35 @@ class Console
    */
   public static function writeLine(string $message, int $x, int $y): void
   {
-    $cursor = self::cursor();
-    $x = max(1, $x);
-    $y = max(1, $y);
+    $row = self::getTerminalRow($y);
 
-
-    $messageLength = strlen($message);
-    $columnStart = $x;
-    $columnEnd = $x + $messageLength;
-
-    for ($i = $columnStart; $i < $columnEnd; $i++) {
-      self::$buffer->set($i, $y, $message[$i - $columnStart]);
+    if ($row < 1 || $row > self::$height) {
+      return;
     }
 
-    $cursor->moveTo(0, $y);
-    echo implode(self::$buffer->toArray()[$y]);
-    $cursor->moveTo(0, $y + 1);
+    $columnStart = self::getTerminalColumn($x);
+    $skipVisibleChars = max(0, 1 - $columnStart);
+    $columnStart = max(1, $columnStart);
+    $availableWidth = self::$width - $columnStart + 1;
+    $containsAnsi = str_contains($message, "\033");
+
+    if ($availableWidth < 1) {
+      return;
+    }
+
+    if (!$containsAnsi && $skipVisibleChars === 0 && strlen($message) <= $availableWidth) {
+      $visibleMessage = $message;
+    } else {
+      $visibleMessage = self::sliceTextForDisplay($message, $skipVisibleChars, $availableWidth);
+    }
+
+    if ($visibleMessage === '') {
+      return;
+    }
+
+    $cursor = self::cursor();
+    $cursor->moveTo($columnStart, $row);
+    echo $visibleMessage;
   }
 
   /**
@@ -340,9 +443,7 @@ class Console
    */
   public static function writeInColor(Color $color, string $message, int $x, int $y): void
   {
-    echo $color->value;
-    self::writeLine($message, $x, $y);
-    echo Color::RESET->value;
+    self::writeLine(Color::apply($color, $message), $x, $y);
   }
 
   /**
@@ -463,5 +564,99 @@ class Console
   public static function output(int $verbosity = OutputInterface::VERBOSITY_NORMAL, ?bool $decorated = null, ?OutputFormatterInterface $formatter = null): OutputInterface
   {
     return new ConsoleOutput($verbosity, $decorated, $formatter);
+  }
+
+  /**
+   * Returns the terminal column for the given logical column.
+   *
+   * @param int $x The logical x position.
+   * @return int
+   */
+  private static function getTerminalColumn(int $x): int
+  {
+    return self::$renderOffsetX + max(1, $x) - 1;
+  }
+
+  /**
+   * Returns the terminal row for the given logical row.
+   *
+   * @param int $y The logical y position.
+   * @return int
+   */
+  private static function getTerminalRow(int $y): int
+  {
+    return self::$renderOffsetY + max(1, $y) - 1;
+  }
+
+  /**
+   * Returns a clipped slice of text for terminal output.
+   *
+   * @param string $message The message to clip.
+   * @param int $skipVisibleChars The number of visible characters to skip.
+   * @param int $maxVisibleChars The maximum number of visible characters to keep.
+   * @return string
+   */
+  private static function sliceTextForDisplay(string $message, int $skipVisibleChars, int $maxVisibleChars): string
+  {
+    if ($maxVisibleChars < 1 || $message === '') {
+      return '';
+    }
+
+    if (!str_contains($message, "\033")) {
+      return substr($message, $skipVisibleChars, $maxVisibleChars);
+    }
+
+    return self::sliceStyledText($message, $skipVisibleChars, $maxVisibleChars);
+  }
+
+  /**
+   * Returns a clipped slice of a styled string while preserving ANSI color sequences.
+   *
+   * @param string $message The styled message to clip.
+   * @param int $skipVisibleChars The number of visible characters to skip.
+   * @param int $maxVisibleChars The maximum number of visible characters to keep.
+   * @return string
+   */
+  private static function sliceStyledText(string $message, int $skipVisibleChars, int $maxVisibleChars): string
+  {
+    $glyphs = self::toStyledGlyphs($message);
+
+    if ($glyphs === [] || $maxVisibleChars < 1 || $skipVisibleChars >= count($glyphs)) {
+      return '';
+    }
+
+    return implode('', array_slice($glyphs, $skipVisibleChars, $maxVisibleChars));
+  }
+
+  /**
+   * Breaks a styled string into visible glyphs with ANSI color preserved per glyph.
+   *
+   * @param string $message The styled string.
+   * @return string[]
+   */
+  private static function toStyledGlyphs(string $message): array
+  {
+    preg_match_all('/\033\[[0-9;]*m|./us', $message, $matches);
+
+    $glyphs = [];
+    $activeStyle = '';
+
+    foreach ($matches[0] ?? [] as $token) {
+      if (preg_match('/^\033\[[0-9;]*m$/', $token) === 1) {
+        if ($token === Color::RESET->value) {
+          $activeStyle = '';
+        } else {
+          $activeStyle .= $token;
+        }
+
+        continue;
+      }
+
+      $glyphs[] = $activeStyle !== ''
+        ? $activeStyle . $token . Color::RESET->value
+        : $token;
+    }
+
+    return $glyphs;
   }
 }
