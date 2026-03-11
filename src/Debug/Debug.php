@@ -80,7 +80,7 @@ final class Debug
   {
     $filename = Path::join(self::getLogDirectory(),  'debug.log');
 
-    if (self::$logLevel->getPriority() > $logLevel->getPriority()) {
+    if (!self::shouldLog($logLevel)) {
       return;
     }
 
@@ -101,7 +101,7 @@ final class Debug
    */
   public static function error(string $message, string $prefix = '[ERROR]'): void
   {
-    if (self::$logLevel->getPriority() > LogLevel::ERROR->getPriority()) {
+    if (!self::shouldLog(LogLevel::ERROR)) {
       return;
     }
 
@@ -135,6 +135,17 @@ final class Debug
   public static function info(string $message, ?string $prefix = null): void
   {
     self::log($message, $prefix ?? '[INFO]', LogLevel::INFO);
+  }
+
+  /**
+   * Determines whether a message at the given level should be logged.
+   *
+   * @param LogLevel $messageLevel The level of the message being logged.
+   * @return bool
+   */
+  private static function shouldLog(LogLevel $messageLevel): bool
+  {
+    return $messageLevel->getPriority() >= self::$logLevel->getPriority();
   }
 
   /**

@@ -396,8 +396,8 @@ class Game implements ObservableInterface
             ['showDebugInfo', SettingsKey::DEBUG_INFO->value, 'show_debug_info', 'debug.showInfo', 'debug.showDebugInfo'],
             false
         );
-        $this->settings[SettingsKey::LOG_LEVEL->value] = $_ENV['LOG_LEVEL'] ?? 'info';
-        Debug::setLogLevel(LogLevel::tryFrom($this->getSettings('log_level')) ?? LogLevel::DEBUG);
+        $this->settings[SettingsKey::LOG_LEVEL->value] = $_ENV['LOG_LEVEL'] ?? DEFAULT_LOG_LEVEL;
+        Debug::setLogLevel(LogLevel::tryFrom((string)$this->getSettings('log_level')) ?? LogLevel::DEBUG);
 
         $this->settings[SettingsKey::LOG_DIR->value] = Path::join(getcwd(), DEFAULT_LOGS_DIR);
         Debug::info("Log directory initialized: {$this->settings[SettingsKey::LOG_DIR->value]}");
@@ -434,6 +434,18 @@ class Game implements ObservableInterface
         try {
             $settings ??= [];
 
+            $this->settings[SettingsKey::LOG_LEVEL->value] = $settings[SettingsKey::LOG_LEVEL->value]
+                ?? $_ENV['LOG_LEVEL']
+                ?? $this->settings[SettingsKey::LOG_LEVEL->value]
+                ?? DEFAULT_LOG_LEVEL;
+            $this->settings[SettingsKey::LOG_DIR->value] = $settings[SettingsKey::LOG_DIR->value]
+                ?? $_ENV['LOG_DIR']
+                ?? $this->settings[SettingsKey::LOG_DIR->value]
+                ?? Path::join(getcwd(), DEFAULT_LOGS_DIR);
+
+            Debug::setLogDirectory($this->settings[SettingsKey::LOG_DIR->value]);
+            Debug::setLogLevel(LogLevel::tryFrom((string)$this->settings[SettingsKey::LOG_LEVEL->value]) ?? LogLevel::DEBUG);
+
             Debug::info("Loading environment settings");
             // Environment
             $this->settings[SettingsKey::DEBUG->value] = $settings[SettingsKey::DEBUG->value]
@@ -451,9 +463,6 @@ class Game implements ObservableInterface
                     ['showDebugInfo', SettingsKey::DEBUG_INFO->value, 'show_debug_info', 'debug.showInfo', 'debug.showDebugInfo'],
                     false
                 );
-            $this->settings[SettingsKey::LOG_LEVEL->value] = $_ENV['LOG_LEVEL'] ?? DEFAULT_LOG_LEVEL;
-            $this->settings[SettingsKey::LOG_DIR->value] = $_ENV['LOG_DIR'] ?? Path::join(getcwd(), DEFAULT_LOGS_DIR);
-
             Debug::info("Loading game settings");
             // Game
             $this->settings[SettingsKey::GAME_NAME->value] = $settings[SettingsKey::GAME_NAME->value] ?? $this->name;
@@ -475,8 +484,6 @@ class Game implements ObservableInterface
 
             // Debug settings
             Debug::info('Loading debug settings');
-            Debug::setLogDirectory($this->getSettings('log_dir'));
-            Debug::setLogLevel(LogLevel::tryFrom($this->getSettings('log_level')) ?? LogLevel::DEBUG);
             $this->debugWindow->setPosition([0, $this->settings[SettingsKey::SCREEN_HEIGHT->value] - self::DEBUG_WINDOW_HEIGHT]);
 
             // Input settings
