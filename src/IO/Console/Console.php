@@ -10,6 +10,7 @@ use Sendama\Engine\Game;
 use Sendama\Engine\IO\Enumerations\Color;
 use Sendama\Engine\UI\Modals\ModalManager;
 use Sendama\Engine\UI\Windows\Enumerations\WindowPosition;
+use Sendama\Engine\Util\Unicode;
 use Symfony\Component\Console\Formatter\OutputFormatterInterface;
 use Symfony\Component\Console\Output\ConsoleOutput;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -417,7 +418,7 @@ class Console
       return;
     }
 
-    if (!$containsAnsi && $skipVisibleChars === 0 && strlen($message) <= $availableWidth) {
+    if (!$containsAnsi && $skipVisibleChars === 0 && Unicode::length($message) <= $availableWidth) {
       $visibleMessage = $message;
     } else {
       $visibleMessage = self::sliceTextForDisplay($message, $skipVisibleChars, $availableWidth);
@@ -603,7 +604,7 @@ class Console
     }
 
     if (!str_contains($message, "\033")) {
-      return substr($message, $skipVisibleChars, $maxVisibleChars);
+      return Unicode::substring($message, $skipVisibleChars, $maxVisibleChars);
     }
 
     return self::sliceStyledText($message, $skipVisibleChars, $maxVisibleChars);

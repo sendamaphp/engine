@@ -15,6 +15,7 @@ use Sendama\Engine\Physics\Interfaces\ColliderInterface;
 use Sendama\Engine\Physics\Physics;
 use Sendama\Engine\UI\Interfaces\UIElementInterface;
 use Sendama\Engine\Util\Path;
+use Sendama\Engine\Util\Unicode;
 
 /**
  * The abstract scene class.
@@ -450,10 +451,14 @@ abstract class AbstractScene implements SceneInterface
 
         $lines = explode("\n", $this->environmentTileMapData);
 
+        if (end($lines) === '') {
+            array_pop($lines);
+        }
+
         foreach ($lines as $y => $line) {
-            $lineLength = strlen($line);
-            for ($x = 0; $x < $lineLength; $x++) {
-                $this->worldsSpace->set($x, $y, $line[$x]);
+            $glyphs = Unicode::characters($line);
+            foreach ($glyphs as $x => $glyph) {
+                $this->worldsSpace->set($x, $y, $glyph);
             }
         }
 

@@ -6,6 +6,7 @@ use InvalidArgumentException;
 use Sendama\Engine\Core\Traits\DimensionTrait;
 use Sendama\Engine\IO\Enumerations\Color;
 use Sendama\Engine\Util\Path;
+use Sendama\Engine\Util\Unicode;
 use Stringable;
 
 /**
@@ -83,14 +84,19 @@ class Texture implements Stringable
 
         // Convert the image to an array of pixels.
         $imageMatrix = explode("\n", $image);
+
+        if (end($imageMatrix) === '') {
+            array_pop($imageMatrix);
+        }
+
         $height = 0;
         $longestRow = 0;
 
         foreach ($imageMatrix as $row) {
-            $width = $this->width < 1 ? strlen($row) : $this->width;
-            $chunks = str_split(substr($row, 0, $width));
+            $chunks = Unicode::characters($row, $this->width < 1 ? null : $this->width);
+            $width = $this->width < 1 ? count($chunks) : $this->width;
             $this->pixels[] = $chunks;
-            $longestRow = max($longestRow, $width);
+            $longestRow = max($longestRow, count($chunks));
             $height++;
         }
 
@@ -159,7 +165,7 @@ class Texture implements Stringable
             $output = Color::apply($this->color, to: $output);
         }
 
-        $this->pixels[$y][$x] = substr($output, 0, 1);
+        $this->pixels[$y][$x] = Unicode::substring($output, 0, 1);
     }
 
     public function __toString(): string

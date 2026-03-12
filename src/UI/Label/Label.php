@@ -4,6 +4,7 @@ namespace Sendama\Engine\UI\Label;
 
 use Sendama\Engine\IO\Console\Console;
 use Sendama\Engine\UI\UIElement;
+use Sendama\Engine\Util\Unicode;
 
 /**
  * Represents a label UI element.
@@ -77,7 +78,7 @@ class Label extends UIElement
    */
   public function eraseAt(?int $x = null, ?int $y = null): void
   {
-    $buffer = str_repeat(' ', strlen($this->text));
+    $buffer = str_repeat(' ', Unicode::length($this->text));
     Console::write($buffer, $x ?? 0, $y ?? 0);
   }
 
