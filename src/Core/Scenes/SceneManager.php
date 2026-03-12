@@ -21,6 +21,7 @@ use Sendama\Engine\Events\SceneEvent;
 use Sendama\Engine\Exceptions\IncorrectComponentTypeException;
 use Sendama\Engine\Exceptions\Scenes\SceneManagementException;
 use Sendama\Engine\Exceptions\Scenes\SceneNotFoundException;
+use Sendama\Engine\IO\Console\Console;
 use Sendama\Engine\Physics\Collider;
 use Sendama\Engine\Physics\Interfaces\ColliderInterface;
 use Sendama\Engine\Physics\Physics;
@@ -185,7 +186,24 @@ final class SceneManager implements SingletonInterface, CanStart, CanResume, Can
 
         $this->stop();
         $this->unload();
-        $this->activeSceneNode = new SceneNode($sceneToBeLoaded->loadSceneSettings($this->settings), $this->activeSceneNode);
+
+        $sceneSettings = $this->settings;
+        $localSceneSettings = $sceneToBeLoaded->getSettings(null);
+
+        if (is_array($localSceneSettings)) {
+            $sceneSettings = array_replace($sceneSettings, $localSceneSettings);
+        }
+
+        $loadedScene = $sceneToBeLoaded->loadSceneSettings($sceneSettings);
+        $viewport = $loadedScene->getCamera()->getViewport();
+
+        Console::refreshLayout(
+            $viewport->getWidth(),
+            $viewport->getHeight(),
+            Console::getSize(force: true)
+        );
+
+        $this->activeSceneNode = new SceneNode($loadedScene, $this->activeSceneNode);
         $this->load();
 
         $this->start();
@@ -362,6 +380,16 @@ final class SceneManager implements SingletonInterface, CanStart, CanResume, Can
             public function awake(): void
             {
                 $sceneMetadata = $this->sceneMetadata;
+
+                $sceneWidth = $sceneMetadata->screen_width ?? $sceneMetadata->screenWidth ?? $sceneMetadata->width ?? null;
+                if (is_numeric($sceneWidth)) {
+                    $this->settings['screen_width'] = (int)$sceneWidth;
+                }
+
+                $sceneHeight = $sceneMetadata->screen_height ?? $sceneMetadata->screenHeight ?? $sceneMetadata->height ?? null;
+                if (is_numeric($sceneHeight)) {
+                    $this->settings['screen_height'] = (int)$sceneHeight;
+                }
 
                 if (isset($sceneMetadata->environmentTileMapPath)) {
                     $this->environmentTileMapPath = $sceneMetadata->environmentTileMapPath;

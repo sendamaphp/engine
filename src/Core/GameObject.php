@@ -9,6 +9,7 @@ use Sendama\Engine\Core\Interfaces\ComponentInterface;
 use Sendama\Engine\Core\Interfaces\GameObjectInterface;
 use Sendama\Engine\Core\Rendering\Renderer;
 use Sendama\Engine\Core\Scenes\Interfaces\SceneInterface;
+use Sendama\Engine\Core\Scenes\Scene;
 use Sendama\Engine\Core\Scenes\SceneManager;
 use Sendama\Engine\UI\Interfaces\UIElementInterface;
 
@@ -44,6 +45,12 @@ class GameObject implements GameObjectInterface
      */
     protected Renderer $renderer;
 
+    public SceneInterface $activeScene {
+        get {
+            return SceneManager::getInstance()->getActiveScene();
+        }
+    }
+
     /**
      * GameObject constructor.
      *
@@ -62,45 +69,6 @@ class GameObject implements GameObjectInterface
 
         $this->components[] = $this->transform;
         $this->components[] = $this->renderer;
-    }
-
-    /**
-     * Serializes the game object into an array.
-     *
-     * @return array<string, mixed> The serialized game object.
-     */
-    public function __serialize(): array
-    {
-        return [
-            "hash" => $this->hash,
-            "name" => $this->name,
-            "tag" => $this->tag,
-            "position" => $this->position,
-            "rotation" => $this->rotation,
-            "scale" => $this->scale,
-            "transform" => $this->transform,
-            "render" => $this->renderer,
-            "sprite" => $this->sprite,
-        ];
-    }
-
-    /**
-     * Unserializes the game object from an array.
-     *
-     * @param array<string, mixed> $data The data to unserialize the game object from.
-     * @return void
-     */
-    public function __unserialize(array $data): void
-    {
-        $this->name = $data["name"];
-        $this->tag = $data["tag"];
-        $this->position = $data["position"];
-        $this->rotation = $data["rotation"];
-        $this->scale = $data["scale"];
-        $this->transform = $data["transform"];
-        $this->renderer = $data["render"];
-        $this->sprite = $data["sprite"];
-        $this->hash = $data["hash"] ?? md5(__CLASS__) . '-' . uniqid($data["name"] ?? 'GameObject', true);
     }
 
     /**
@@ -255,6 +223,45 @@ class GameObject implements GameObjectInterface
         }
 
         return $gameObjects;
+    }
+
+    /**
+     * Serializes the game object into an array.
+     *
+     * @return array<string, mixed> The serialized game object.
+     */
+    public function __serialize(): array
+    {
+        return [
+            "hash" => $this->hash,
+            "name" => $this->name,
+            "tag" => $this->tag,
+            "position" => $this->position,
+            "rotation" => $this->rotation,
+            "scale" => $this->scale,
+            "transform" => $this->transform,
+            "render" => $this->renderer,
+            "sprite" => $this->sprite,
+        ];
+    }
+
+    /**
+     * Unserializes the game object from an array.
+     *
+     * @param array<string, mixed> $data The data to unserialize the game object from.
+     * @return void
+     */
+    public function __unserialize(array $data): void
+    {
+        $this->name = $data["name"];
+        $this->tag = $data["tag"];
+        $this->position = $data["position"];
+        $this->rotation = $data["rotation"];
+        $this->scale = $data["scale"];
+        $this->transform = $data["transform"];
+        $this->renderer = $data["render"];
+        $this->sprite = $data["sprite"];
+        $this->hash = $data["hash"] ?? md5(__CLASS__) . '-' . uniqid($data["name"] ?? 'GameObject', true);
     }
 
     /**

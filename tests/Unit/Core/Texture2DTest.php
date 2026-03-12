@@ -8,6 +8,7 @@ describe('Texture', function () {
   beforeEach(function () {
     $this->workingDirectory = dirname(__DIR__, 2);
     $this->texturePath = Path::join($this->workingDirectory, 'Mocks/Textures/test.texture');
+    $this->unicodeTexturePath = Path::join($this->workingDirectory, 'Mocks/Textures/unicode.texture');
   });
 
   it ('can be created', function () {
@@ -62,5 +63,16 @@ describe('Texture', function () {
 
     expect(strval($texture))
       ->toBe($expectedString);
+  });
+
+  it('preserves unicode glyphs as single pixels', function () {
+    $texture = new Texture($this->unicodeTexturePath);
+
+    expect($texture->getWidth())->toBe(2)
+      ->and($texture->getHeight())->toBe(2)
+      ->and($texture->getPixel(0, 0))->toBe('←')
+      ->and($texture->getPixel(1, 0))->toBe('↑')
+      ->and($texture->getPixel(0, 1))->toBe('→')
+      ->and($texture->getPixel(1, 1))->toBe('↓');
   });
 });

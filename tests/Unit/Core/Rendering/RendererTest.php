@@ -102,7 +102,8 @@ it('restores the environment tile map under a sprite when it is erased', functio
   $gameObject->erase();
   $output = ob_get_clean();
 
-  expect($output)->toContain("\033[1;1H#");
+  $offset = Console::getRenderOffset();
+  expect($output)->toContain("\033[{$offset->getY()};{$offset->getX()}H#");
 });
 
 function resetSingleton(string $className, string $property): void

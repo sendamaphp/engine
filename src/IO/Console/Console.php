@@ -10,6 +10,7 @@ use Sendama\Engine\Game;
 use Sendama\Engine\IO\Enumerations\Color;
 use Sendama\Engine\UI\Modals\ModalManager;
 use Sendama\Engine\UI\Windows\Enumerations\WindowPosition;
+use Sendama\Engine\Util\Unicode;
 use Symfony\Component\Console\Formatter\OutputFormatterInterface;
 use Symfony\Component\Console\Output\ConsoleOutput;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -20,6 +21,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 class Console
 {
   private const float TERMINAL_SIZE_POLL_INTERVAL_SECONDS = 0.1;
+  private const int WINDOW_STATE_SETTLE_DELAY_MICROSECONDS = 50000;
   /**
    * @var Game|null $game The game instance.
    */
@@ -224,6 +226,22 @@ class Console
   }
 
   /**
+   * Requests the terminal window to maximize when the terminal emulator supports it.
+   *
+   * This is an xterm-compatible window operation; terminals that do not support it
+   * will safely ignore the request and keep their current size.
+   *
+   * @return void
+   */
+  public static function maximizeWindow(): void
+  {
+    echo "\033[9;1t";
+    flush();
+    self::$lastSizeCheckAt = 0.0;
+    usleep(self::WINDOW_STATE_SETTLE_DELAY_MICROSECONDS);
+  }
+
+  /**
    * Returns the terminal size.
    *
    * @return Rect The terminal size.
@@ -417,7 +435,7 @@ class Console
       return;
     }
 
-    if (!$containsAnsi && $skipVisibleChars === 0 && strlen($message) <= $availableWidth) {
+    if (!$containsAnsi && $skipVisibleChars === 0 && Unicode::length($message) <= $availableWidth) {
       $visibleMessage = $message;
     } else {
       $visibleMessage = self::sliceTextForDisplay($message, $skipVisibleChars, $availableWidth);
@@ -603,7 +621,7 @@ class Console
     }
 
     if (!str_contains($message, "\033")) {
-      return substr($message, $skipVisibleChars, $maxVisibleChars);
+      return Unicode::substring($message, $skipVisibleChars, $maxVisibleChars);
     }
 
     return self::sliceStyledText($message, $skipVisibleChars, $maxVisibleChars);
