@@ -19,6 +19,14 @@ it('computes a centered render frame from the terminal size', function () {
     ->and($offset->getY())->toBe(19);
 });
 
+it('requests terminal maximization instead of resizing the character grid', function () {
+  ob_start();
+  Console::maximizeWindow();
+  $output = ob_get_clean();
+
+  expect($output)->toBe("\033[9;1t");
+});
+
 it('renders text from the centered viewport origin without duplicating glyphs', function () {
   Console::refreshLayout(
     80,

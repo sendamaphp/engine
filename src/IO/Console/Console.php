@@ -21,6 +21,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 class Console
 {
   private const float TERMINAL_SIZE_POLL_INTERVAL_SECONDS = 0.1;
+  private const int WINDOW_STATE_SETTLE_DELAY_MICROSECONDS = 50000;
   /**
    * @var Game|null $game The game instance.
    */
@@ -222,6 +223,22 @@ class Console
   public static function setSize(int $width, int $height): void
   {
     echo "\033[8;$height;{$width}t";
+  }
+
+  /**
+   * Requests the terminal window to maximize when the terminal emulator supports it.
+   *
+   * This is an xterm-compatible window operation; terminals that do not support it
+   * will safely ignore the request and keep their current size.
+   *
+   * @return void
+   */
+  public static function maximizeWindow(): void
+  {
+    echo "\033[9;1t";
+    flush();
+    self::$lastSizeCheckAt = 0.0;
+    usleep(self::WINDOW_STATE_SETTLE_DELAY_MICROSECONDS);
   }
 
   /**

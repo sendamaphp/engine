@@ -8,6 +8,7 @@ use Sendama\Engine\Core\Enumerations\SettingsKey;
 use Sendama\Engine\IO\Console\Console;
 use Sendama\Engine\IO\Console\Cursor;
 use Sendama\Engine\Util\Path;
+use Sendama\Engine\Util\Unicode;
 
 final class SplashScreen
 {
@@ -22,7 +23,6 @@ final class SplashScreen
     {
         try {
             Debug::info("Showing splash screen");
-            Console::setSize(MAX_SCREEN_WIDTH, MAX_SCREEN_HEIGHT);
 
             // Check if a splash texture can be loaded
             if (!file_exists($this->getSettings('splash_texture'))) {
@@ -33,14 +33,21 @@ final class SplashScreen
             Debug::info("Loading splash screen texture");
             $splashScreen = file_get_contents($this->getSettings('splash_texture'));
             $splashScreenRows = explode("\n", $splashScreen);
-            $splashScreenWidth = 75;
-            $splashScreenHeight = 25;
             $splashByLine = 'SendamaEngine ™';
-            $splashScreenRows[] = sprintf("%s%s", str_repeat(' ', $splashScreenWidth - 12), "powered by");
-            $splashScreenRows[] = sprintf("%s%s", str_repeat(' ', $splashScreenWidth - strlen($splashByLine)), $splashByLine);
+            $contentWidth = 75;
+            $splashScreenRows[] = sprintf("%s%s", str_repeat(' ', $contentWidth - 12), "powered by");
+            $splashScreenRows[] = sprintf("%s%s", str_repeat(' ', $contentWidth - Unicode::length($splashByLine)), $splashByLine);
+            $splashScreenHeight = count($splashScreenRows);
+            $splashScreenWidth = 0;
 
-            $leftMargin = (MAX_SCREEN_WIDTH / 2) - ($splashScreenWidth / 2);
-            $topMargin = (MAX_SCREEN_HEIGHT / 2) - ($splashScreenHeight / 2);
+            foreach ($splashScreenRows as $row) {
+                $splashScreenWidth = max($splashScreenWidth, Unicode::length($row));
+            }
+
+            $terminalSize = Console::getSize(force: true);
+
+            $leftMargin = max(1, (int)floor(($terminalSize->getWidth() - $splashScreenWidth) / 2) + 1);
+            $topMargin = max(1, (int)floor(($terminalSize->getHeight() - $splashScreenHeight) / 2) + 1);
 
             Debug::info("Rendering splash screen texture");
             foreach ($splashScreenRows as $rowIndex => $row) {
@@ -51,7 +58,6 @@ final class SplashScreen
             $duration = (int)($this->getSettings('splash_screen_duration') * 1000000);
             usleep($duration);
 
-            Console::setSize($this->getSettings('screen_width'), $this->getSettings('screen_height'));
             Console::clear();
 
             Debug::info("Splash screen hidden");

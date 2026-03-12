@@ -549,11 +549,7 @@ class Game implements ObservableInterface
     {
         pcntl_async_signals(true);
         pcntl_signal(SIGWINCH, function () {
-            Console::refreshLayout(
-                (int)$this->getSettings(SettingsKey::SCREEN_WIDTH->value),
-                (int)$this->getSettings(SettingsKey::SCREEN_HEIGHT->value),
-                Console::getSize(force: true)
-            );
+            $this->refreshConsoleLayout(forceTerminalSize: true);
             Debug::info("SIGWINCH received");
         });
     }
@@ -638,13 +634,9 @@ class Game implements ObservableInterface
         // Set the terminal name
         Console::setName($this->getSettings('game_name'));
 
-        // Set the terminal size
-        Console::setSize($this->getSettings('screen_width'), $this->getSettings('screen_height'));
-        Console::refreshLayout(
-            (int)$this->getSettings(SettingsKey::SCREEN_WIDTH->value),
-            (int)$this->getSettings(SettingsKey::SCREEN_HEIGHT->value),
-            Console::getSize(force: true)
-        );
+        // Treat the terminal as the container and center the scene within it.
+        Console::maximizeWindow();
+        $this->refreshConsoleLayout(forceTerminalSize: true);
 
         // Hide the cursor
         $this->consoleCursor->hide();
@@ -748,10 +740,7 @@ class Game implements ObservableInterface
     private function render(): void
     {
         $this->frameCount++;
-        Console::refreshLayout(
-            (int)$this->getSettings(SettingsKey::SCREEN_WIDTH->value),
-            (int)$this->getSettings(SettingsKey::SCREEN_HEIGHT->value)
-        );
+        $this->refreshConsoleLayout();
         $this->state->render();
         $this->uiManager->render();
         $this->renderDebugInfo();
@@ -768,9 +757,58 @@ class Game implements ObservableInterface
         if ($this->isDebug() && $this->showDebugInfo()) {
             $content = ["FPS: $this->frameRate", "Delta: " . round(Time::getDeltaTime(), 2), "Time: " . Time::getPrettyTime(ChronoUnit::SECONDS)];
 
+            $this->debugWindow->setPosition([0, max(0, $this->getLogicalScreenHeight() - self::DEBUG_WINDOW_HEIGHT)]);
             $this->debugWindow->setContent($content);
             $this->debugWindow->render();
         }
+    }
+
+    /**
+     * Refresh the console layout using the active scene viewport when available.
+     *
+     * @param bool $forceTerminalSize Whether to re-read the terminal size immediately.
+     * @return void
+     * @throws Exception
+     */
+    private function refreshConsoleLayout(bool $forceTerminalSize = false): void
+    {
+        Console::refreshLayout(
+            $this->getLogicalScreenWidth(),
+            $this->getLogicalScreenHeight(),
+            $forceTerminalSize ? Console::getSize(force: true) : null
+        );
+    }
+
+    /**
+     * Returns the current logical render width.
+     *
+     * @return int
+     */
+    private function getLogicalScreenWidth(): int
+    {
+        $activeScene = $this->sceneManager->getActiveScene();
+
+        if ($activeScene) {
+            return max(1, $activeScene->getCamera()->getViewport()->getWidth());
+        }
+
+        return max(1, (int)$this->getSettings(SettingsKey::SCREEN_WIDTH->value));
+    }
+
+    /**
+     * Returns the current logical render height.
+     *
+     * @return int
+     */
+    private function getLogicalScreenHeight(): int
+    {
+        $activeScene = $this->sceneManager->getActiveScene();
+
+        if ($activeScene) {
+            return max(1, $activeScene->getCamera()->getViewport()->getHeight());
+        }
+
+        return max(1, (int)$this->getSettings(SettingsKey::SCREEN_HEIGHT->value));
     }
 
     /**
