@@ -1,8 +1,27 @@
 <?php
 
 use Sendama\Engine\Core\GameObject;
+use Sendama\Engine\Core\Scenes\Scene;
+use Sendama\Engine\Core\Scenes\SceneManager;
+use Sendama\Engine\Core\Scenes\SceneNode;
+use Sendama\Engine\Core\Texture;
 use Sendama\Engine\Core\Transform;
+use Sendama\Engine\Core\Vector2;
+use Sendama\Engine\Core\Behaviours\Behaviour;
 use Sendama\Engine\Mocks\MockBehavior;
+use Sendama\Engine\Physics\Collider;
+use Sendama\Engine\Physics\Physics;
+use Sendama\Engine\Physics\Rigidbody;
+
+if (!class_exists(StartAddsColliderBehavior::class)) {
+  class StartAddsColliderBehavior extends Behaviour
+  {
+    public function onStart(): void
+    {
+      $this->getGameObject()->addComponent(Collider::class);
+    }
+  }
+}
 
 
 describe('GameObject', function () {
@@ -102,4 +121,109 @@ describe('GameObject', function () {
     expect($mockBehaviour1->updateCount)->toEqual(1);
     expect($mockBehaviour2->updateCount)->toEqual(1);
   });
+
+  it('starts components the first time an inactive game object is activated', function () {
+    $this->gameObject->deactivate();
+    $mockBehaviour = $this->gameObject->addComponent(MockBehavior::class);
+
+    expect($mockBehaviour->startCount)->toEqual(0);
+
+    $this->gameObject->activate();
+
+    expect($mockBehaviour->startCount)->toEqual(1);
+  });
+
+  it('registers runtime-added collider components for objects already in the active scene', function () {
+    resetGameObjectSingleton(SceneManager::class, 'instance');
+    resetGameObjectSingleton(Physics::class, 'instance');
+
+    $sceneManager = SceneManager::getInstance();
+    $physics = Physics::getInstance();
+    $scene = new class('Runtime Scene') extends Scene
+    {
+      public function awake(): void
+      {
+      }
+    };
+    $scene->loadSceneSettings([
+      'screen_width' => 10,
+      'screen_height' => 10,
+    ]);
+
+    $activeSceneNode = new ReflectionProperty(SceneManager::class, 'activeSceneNode');
+    $activeSceneNode->setValue($sceneManager, new SceneNode($scene));
+
+    $texturePath = getcwd() . '/tests/Mocks/Textures/test.texture';
+    $mover = new GameObject('Mover', position: new Vector2(0, 0));
+    $mover->setSpriteFromTexture(new Texture($texturePath), new Vector2(0, 0), new Vector2(1, 1));
+    $wall = new GameObject('Wall', position: new Vector2(1, 0));
+    $wall->setSpriteFromTexture(new Texture($texturePath), new Vector2(0, 0), new Vector2(1, 1));
+
+    $scene->add($mover);
+    $scene->add($wall);
+    $scene->start();
+
+    $rigidbody = $mover->addComponent(Rigidbody::class);
+    $wallCollider = $wall->addComponent(Collider::class);
+
+    expect($rigidbody)->toBeInstanceOf(Rigidbody::class)
+      ->and($wallCollider)->toBeInstanceOf(Collider::class);
+
+    $collisions = $physics->checkCollisions($rigidbody, new Vector2(1, 0));
+
+    expect($collisions)
+      ->toHaveCount(1)
+      ->and($collisions[0]->getGameObject()->getName())->toEqual('Wall');
+  });
+
+  it('registers collider components that are added during another component start callback', function () {
+    resetGameObjectSingleton(SceneManager::class, 'instance');
+    resetGameObjectSingleton(Physics::class, 'instance');
+
+    $sceneManager = SceneManager::getInstance();
+    $physics = Physics::getInstance();
+    $scene = new class('Runtime Scene') extends Scene
+    {
+      public function awake(): void
+      {
+      }
+    };
+    $scene->loadSceneSettings([
+      'screen_width' => 10,
+      'screen_height' => 10,
+    ]);
+
+    $activeSceneNode = new ReflectionProperty(SceneManager::class, 'activeSceneNode');
+    $activeSceneNode->setValue($sceneManager, new SceneNode($scene));
+
+    $texturePath = getcwd() . '/tests/Mocks/Textures/test.texture';
+    $mover = new GameObject('Mover', position: new Vector2(0, 0));
+    $mover->setSpriteFromTexture(new Texture($texturePath), new Vector2(0, 0), new Vector2(1, 1));
+    $mover->addComponent(Rigidbody::class);
+
+    $wall = new GameObject('Wall', position: new Vector2(1, 0));
+    $wall->setSpriteFromTexture(new Texture($texturePath), new Vector2(0, 0), new Vector2(1, 1));
+    $wall->addComponent(StartAddsColliderBehavior::class);
+
+    $scene->add($mover);
+    $scene->add($wall);
+    $scene->start();
+
+    $rigidbody = $mover->getComponent(Rigidbody::class);
+
+    expect($rigidbody)->toBeInstanceOf(Rigidbody::class);
+
+    $collisions = $physics->checkCollisions($rigidbody, new Vector2(1, 0));
+
+    expect($collisions)
+      ->toHaveCount(1)
+      ->and($collisions[0]->getGameObject()->getName())->toEqual('Wall');
+  });
 });
+
+function resetGameObjectSingleton(string $className, string $propertyName): void
+{
+  $reflection = new ReflectionClass($className);
+  $property = $reflection->getProperty($propertyName);
+  $property->setValue(null, null);
+}

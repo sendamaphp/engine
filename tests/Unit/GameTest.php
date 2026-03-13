@@ -7,11 +7,11 @@ use Sendama\Engine\Util\Interfaces\ConfigInterface;
 
 beforeEach(function () {
   resetStaticProperty(ConfigStore::class, 'store', []);
-  unset($_ENV['DEBUG_MODE'], $_ENV['SHOW_DEBUG_INFO']);
+  unset($_ENV['DEBUG_MODE'], $_ENV['SHOW_DEBUG_INFO'], $_ENV['LOG_LEVEL']);
 });
 
 afterEach(function () {
-  unset($_ENV['DEBUG_MODE'], $_ENV['SHOW_DEBUG_INFO']);
+  unset($_ENV['DEBUG_MODE'], $_ENV['SHOW_DEBUG_INFO'], $_ENV['LOG_LEVEL']);
 });
 
 it('reads debug flags from sendama config when env overrides are absent', function () {
@@ -46,6 +46,20 @@ it('prefers env debug flags over sendama config values', function () {
     ->and(invokePrivateStaticMethod(Game::class, 'resolveConfiguredSetting', 'SHOW_DEBUG_INFO', ['showDebugInfo', 'debug_info'], false))->toBe('0')
     ->and(invokePrivateStaticMethod(Game::class, 'isTruthySetting', 'false'))->toBeFalse()
     ->and(invokePrivateStaticMethod(Game::class, 'isTruthySetting', '0'))->toBeFalse();
+});
+
+it('prefers env log level over file settings and normalizes the value', function () {
+  $_ENV['LOG_LEVEL'] = 'debug';
+
+  expect(invokePrivateStaticMethod(Game::class, 'resolveConfiguredLogLevelValue', [
+    'log_level' => 'info',
+  ], 'warn'))->toBe('debug');
+});
+
+it('falls back to configured log level when env is absent', function () {
+  expect(invokePrivateStaticMethod(Game::class, 'resolveConfiguredLogLevelValue', [
+    'log_level' => 'warn',
+  ], 'info'))->toBe('warn');
 });
 
 function invokePrivateStaticMethod(string $className, string $methodName, mixed ...$args): mixed

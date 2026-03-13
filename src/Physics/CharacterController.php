@@ -37,7 +37,7 @@ class CharacterController extends Collider implements ObservableInterface
     protected ItemList $staticObservers;
 
     /**
-     * @var array<CollisionInterface<T>> The previous collisions.
+     * @var array<string, CollisionInterface<T>> The previous collisions.
      */
     private array $previousCollisions = [];
 
@@ -64,16 +64,31 @@ class CharacterController extends Collider implements ObservableInterface
     {
         $collisions = $this->physics?->checkCollisions($this, $motion) ?? [];
         $blockingCollisionCount = 0;
+        $currentCollisions = [];
 
         foreach ($collisions as $collision) {
-            $this->resolveCollision($collision);
+            $collisionKey = $this->getCollisionKey($collision);
+
+            if ($collisionKey !== null && !isset($currentCollisions[$collisionKey])) {
+                $currentCollisions[$collisionKey] = $collision;
+                $this->dispatchCollision(
+                    isset($this->previousCollisions[$collisionKey]) ? 'onCollisionStay' : 'onCollisionEnter',
+                    $collision
+                );
+            }
 
             if (!($collision->getContact(0)?->getOtherCollider()?->isTrigger() ?? false)) {
                 $blockingCollisionCount++;
             }
         }
 
-        $this->previousCollisions = $collisions;
+        foreach ($this->previousCollisions as $collisionKey => $collision) {
+            if (!isset($currentCollisions[$collisionKey])) {
+                $this->dispatchCollision('onCollisionExit', $collision);
+            }
+        }
+
+        $this->previousCollisions = $currentCollisions;
 
         if ($blockingCollisionCount === 0) {
             $this->getTransform()->translate($motion);
@@ -86,35 +101,55 @@ class CharacterController extends Collider implements ObservableInterface
      * @param CollisionInterface<T> $collision The collision.
      * @return void
      */
-    private function resolveCollision(CollisionInterface $collision): void
+    private function dispatchCollision(string $methodName, CollisionInterface $collision): void
     {
-        // TODO: Implement collision resolution.
-        $methodName = match (true) {
-            $this->previousCollisionsIncludes($collision) => "onCollisionStay",
-            default => "onCollisionEnter"
-        };
+        $contact = $collision->getContact(0);
+        $otherCollider = $contact?->getOtherCollider();
 
-        $collision->getContact(0)?->getThisCollider()->getGameObject()->broadcast($methodName, ['collision' => $collision]);
-        $collision->getContact(0)?->getOtherCollider()->getGameObject()->broadcast($methodName, ['collision' => $collision]);
+        $this->getGameObject()->broadcast($methodName, ['collision' => $collision]);
+
+        if ($otherCollider !== null) {
+            $mirroredCollision = new Collision(
+                $this,
+                [
+                    new ContactPoint(
+                        Vector2::getClone($contact->getPoint()),
+                        $otherCollider,
+                        $this,
+                    ),
+                ],
+            );
+
+            $otherCollider->getGameObject()->broadcast($methodName, ['collision' => $mirroredCollision]);
+        }
 
         Debug::log("Collision for {$collision->getGameObject()->getName()} at " . $collision->getContact(0)?->getPoint());
     }
 
     /**
-     * Checks if the previous collisions includes the collision.
+     * Returns a stable key for the collision target.
      *
      * @param CollisionInterface<T> $collision The collision.
-     * @return bool
+     * @return string|null
      */
-    private function previousCollisionsIncludes(CollisionInterface $collision): bool
+    private function getCollisionKey(CollisionInterface $collision): ?string
     {
-        foreach ($this->previousCollisions as $previousCollision) {
-            if ($previousCollision->getContact(0)?->getOtherCollider() === $collision->getContact(0)?->getOtherCollider()) {
-                return true;
+        $contact = $collision->getContact(0);
+        $otherCollider = $contact?->getOtherCollider();
+
+        if ($otherCollider !== null) {
+            return $otherCollider->getHash();
+        }
+
+        if ($collision instanceof EnvironmentCollision) {
+            $point = $contact?->getPoint();
+
+            if ($point !== null) {
+                return 'environment:' . $point->getX() . ':' . $point->getY();
             }
         }
 
-        return false;
+        return null;
     }
 
     /**

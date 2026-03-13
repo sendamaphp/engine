@@ -159,7 +159,34 @@ final class Physics implements SingletonInterface, SimulatorInterface
      */
     public function addCollider(ColliderInterface $collider): void
     {
+        foreach ($this->colliders as $existingCollider) {
+            if ($existingCollider === $collider) {
+                return;
+            }
+        }
+
         $this->colliders->add($collider);
+    }
+
+    /**
+     * Returns the scalar gravity strength used by rigid bodies.
+     *
+     * @return float
+     */
+    public function getGravity(): float
+    {
+        return $this->gravity;
+    }
+
+    /**
+     * Sets the scalar gravity strength used by rigid bodies.
+     *
+     * @param float $gravity
+     * @return void
+     */
+    public function setGravity(float $gravity): void
+    {
+        $this->gravity = $gravity;
     }
 
     /**
@@ -186,6 +213,10 @@ final class Physics implements SingletonInterface, SimulatorInterface
     {
         $collisions = [];
         $projectedBounds = $this->getProjectedBounds($collider, $motion);
+
+        if ($environmentCollision = $this->getEnvironmentCollision($collider, $projectedBounds)) {
+            $collisions[] = $environmentCollision;
+        }
 
         foreach ($this->colliders as $otherCollider) {
             if ($otherCollider === $collider || $otherCollider->getGameObject() === $collider->getGameObject()) {
@@ -263,5 +294,36 @@ final class Physics implements SingletonInterface, SimulatorInterface
     private function getProjectedBounds(ColliderInterface $collider, Vector2 $motion): Rect
     {
         return $collider->getBoundingBox()->translated($motion);
+    }
+
+    /**
+     * Returns an environment collision if the projected bounds overlap the static collision map.
+     *
+     * @param ColliderInterface<T> $collider
+     * @param Rect $projectedBounds
+     * @return EnvironmentCollision<T>|null
+     */
+    private function getEnvironmentCollision(ColliderInterface $collider, Rect $projectedBounds): ?EnvironmentCollision
+    {
+        $minX = max(0, $projectedBounds->getX());
+        $minY = max(0, $projectedBounds->getY());
+        $maxX = min($this->staticCollisionMap->getWidth() - 1, $projectedBounds->getX() + $projectedBounds->getWidth() - 1);
+        $maxY = min($this->staticCollisionMap->getHeight() - 1, $projectedBounds->getY() + $projectedBounds->getHeight() - 1);
+
+        if ($maxX < $minX || $maxY < $minY) {
+            return null;
+        }
+
+        for ($y = $minY; $y <= $maxY; $y++) {
+            for ($x = $minX; $x <= $maxX; $x++) {
+                if ($this->staticCollisionMap->get($x, $y) !== 1) {
+                    continue;
+                }
+
+                return new EnvironmentCollision($collider, new Vector2($x, $y));
+            }
+        }
+
+        return null;
     }
 }

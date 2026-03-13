@@ -11,6 +11,8 @@ use Sendama\Engine\Core\Rendering\Renderer;
 use Sendama\Engine\Core\Scenes\Interfaces\SceneInterface;
 use Sendama\Engine\Core\Scenes\Scene;
 use Sendama\Engine\Core\Scenes\SceneManager;
+use Sendama\Engine\Physics\Physics;
+use Sendama\Engine\Physics\Interfaces\ColliderInterface;
 use Sendama\Engine\UI\Interfaces\UIElementInterface;
 
 /**
@@ -44,6 +46,8 @@ class GameObject implements GameObjectInterface
      * @var Renderer $renderer The renderer for the game object.
      */
     protected Renderer $renderer;
+    protected bool $started = false;
+    protected bool $starting = false;
 
     public SceneInterface $activeScene {
         get {
@@ -426,13 +430,26 @@ class GameObject implements GameObjectInterface
      */
     public function start(): void
     {
-        if ($this->isActive()) {
-            foreach ($this->components as $component) {
-                if ($component->isEnabled()) {
-                    $component->start();
+        if (!$this->isActive() || $this->started) {
+            return;
+        }
+
+        $this->starting = true;
+
+        for ($index = 0; $index < count($this->components); $index++) {
+            $component = $this->components[$index];
+
+            if ($component->isEnabled()) {
+                $component->start();
+
+                if ($component instanceof ColliderInterface) {
+                    Physics::getInstance()->addCollider($component);
                 }
             }
         }
+
+        $this->starting = false;
+        $this->started = true;
     }
 
     /**
@@ -482,7 +499,15 @@ class GameObject implements GameObjectInterface
      */
     public function activate(): void
     {
+        $wasActive = $this->active;
         $this->active = true;
+
+        if (!$this->started) {
+            $this->start();
+        } elseif (!$wasActive) {
+            $this->resume();
+        }
+
         $this->getRenderer()->render();
     }
 
@@ -511,6 +536,10 @@ class GameObject implements GameObjectInterface
      */
     public function deactivate(): void
     {
+        if ($this->active) {
+            $this->suspend();
+        }
+
         $this->active = false;
         $this->getRenderer()->erase();
     }
@@ -556,6 +585,15 @@ class GameObject implements GameObjectInterface
 
         $component = new $componentType($this);
         $this->components[] = $component;
+
+        if ($this->started && $this->belongsToActiveScene()) {
+            $component->start();
+        }
+
+        if ($component instanceof ColliderInterface && $this->belongsToActiveScene()) {
+            Physics::getInstance()->addCollider($component);
+        }
+
         return $component;
     }
 
@@ -567,6 +605,22 @@ class GameObject implements GameObjectInterface
     public function getComponentCount(): int
     {
         return count($this->components);
+    }
+
+    /**
+     * Determines whether a newly-added runtime component should be initialized immediately.
+     *
+     * @return bool
+     */
+    private function belongsToActiveScene(): bool
+    {
+        $activeScene = SceneManager::getInstance()->getActiveScene();
+
+        if ($activeScene === null) {
+            return false;
+        }
+
+        return in_array($this, $activeScene->getRootGameObjects(), true);
     }
 
     /**

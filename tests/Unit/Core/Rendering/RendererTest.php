@@ -106,6 +106,65 @@ it('restores the environment tile map under a sprite when it is erased', functio
   expect($output)->toContain("\033[{$offset->getY()};{$offset->getX()}H#");
 });
 
+it('restores buffered console content after repeated renders at the same position', function () {
+  Console::write('-----', 2, 2);
+
+  $gameObject = new GameObject('Player', position: new Vector2(2, 2));
+  $gameObject->setSpriteFromTexture(
+    new Texture(getcwd() . '/tests/Mocks/Textures/test.texture'),
+    new Vector2(0, 0),
+    new Vector2(1, 1)
+  );
+
+  ob_start();
+  $gameObject->render();
+  ob_end_clean();
+
+  ob_start();
+  $gameObject->render();
+  ob_end_clean();
+
+  ob_start();
+  $gameObject->erase();
+  $output = ob_get_clean();
+
+  $offset = Console::getRenderOffset();
+  $row = $offset->getY() + 1;
+  $column = $offset->getX() + 1;
+
+  expect($output)->toContain("\033[{$row};{$column}H-");
+});
+
+it('restores the previous bounds when a transform position is mutated directly before render', function () {
+  Console::write('-----', 2, 2);
+
+  $gameObject = new GameObject('Player', position: new Vector2(2, 2));
+  $gameObject->setSpriteFromTexture(
+    new Texture(getcwd() . '/tests/Mocks/Textures/test.texture'),
+    new Vector2(0, 0),
+    new Vector2(1, 1)
+  );
+
+  ob_start();
+  $gameObject->render();
+  ob_end_clean();
+
+  $gameObject->getTransform()->getPosition()->add(new Vector2(2, 0));
+
+  ob_start();
+  $gameObject->render();
+  $output = ob_get_clean();
+
+  $offset = Console::getRenderOffset();
+  $oldRow = $offset->getY() + 1;
+  $oldColumn = $offset->getX() + 1;
+  $newColumn = $offset->getX() + 3;
+
+  expect($output)
+    ->toContain("\033[{$oldRow};{$oldColumn}H-")
+    ->toContain("\033[{$oldRow};{$newColumn}H>");
+});
+
 function resetSingleton(string $className, string $property): void
 {
   $reflection = new ReflectionClass($className);

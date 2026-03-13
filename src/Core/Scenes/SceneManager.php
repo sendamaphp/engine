@@ -2,7 +2,9 @@
 
 namespace Sendama\Engine\Core\Scenes;
 
+use ReflectionObject;
 use Assegai\Collections\ItemList;
+use Sendama\Engine\Core\Behaviours\Attributes\SerializeField;
 use Sendama\Engine\Core\GameObject;
 use Sendama\Engine\Core\Interfaces\CanLoad;
 use Sendama\Engine\Core\Interfaces\CanRender;
@@ -23,6 +25,8 @@ use Sendama\Engine\Exceptions\Scenes\SceneManagementException;
 use Sendama\Engine\Exceptions\Scenes\SceneNotFoundException;
 use Sendama\Engine\IO\Console\Console;
 use Sendama\Engine\Physics\Collider;
+use Sendama\Engine\Physics\PhysicsMaterial;
+use Sendama\Engine\Physics\Rigidbody;
 use Sendama\Engine\Physics\Interfaces\ColliderInterface;
 use Sendama\Engine\Physics\Physics;
 use Sendama\Engine\UI\Label\Label;
@@ -395,6 +399,10 @@ final class SceneManager implements SingletonInterface, CanStart, CanResume, Can
                     $this->environmentTileMapPath = $sceneMetadata->environmentTileMapPath;
                 }
 
+                if (isset($sceneMetadata->environmentCollisionMapPath)) {
+                    $this->environmentCollisionMapPath = $sceneMetadata->environmentCollisionMapPath;
+                }
+
                 // Build hierarchy
                 if (isset($sceneMetadata->hierarchy)) {
                     foreach ($sceneMetadata->hierarchy as $index => $item) {
@@ -464,20 +472,7 @@ final class SceneManager implements SingletonInterface, CanStart, CanResume, Can
 
                                         $componentClass = $componentMetadata->class;
                                         $component = $gameObject->addComponent($componentClass);
-
-                                        if (isset($componentMetadata->proerties)) {
-                                            foreach ($componentMetadata->proerties as $key => $value) {
-                                                if (!property_exists($component, $key)) {
-                                                    Debug::warn("Property '$key' does not exist on component of type: " . $componentClass);
-                                                    continue;
-                                                }
-
-                                                $component->$key = match(true) {
-                                                    $componentClass === Collider::class && $key === 'material' => null,
-                                                    default => $value
-                                                };
-                                            }
-                                        }
+                                        SceneManager::applySceneComponentMetadata($component, $componentClass, $componentMetadata);
                                     }
                                 }
 
@@ -505,5 +500,55 @@ final class SceneManager implements SingletonInterface, CanStart, CanResume, Can
         };
 
         $this->addScene($scene);
+    }
+
+    /**
+     * Applies editor/file-scene component metadata onto the instantiated component.
+     *
+     * Supports legacy `proerties`, current `properties`, and editor-authored `data` payloads.
+     *
+     * @param object $component
+     * @param string $componentClass
+     * @param object $componentMetadata
+     * @return void
+     */
+    public static function applySceneComponentMetadata(object $component, string $componentClass, object $componentMetadata): void
+    {
+        $componentProperties = $componentMetadata->properties
+            ?? $componentMetadata->proerties
+            ?? $componentMetadata->data
+            ?? null;
+
+        if (!$componentProperties) {
+            return;
+        }
+
+        $componentOptions = (array)$componentProperties;
+
+        if (method_exists($component, 'configure')) {
+            $component->configure($componentOptions);
+        }
+
+        $reflection = new ReflectionObject($component);
+
+        foreach ($componentOptions as $key => $value) {
+            if ($key === 'material' && ($component instanceof Collider || $component instanceof Rigidbody)) {
+                $component->setMaterial(PhysicsMaterial::fromMetadata((array)$value));
+                continue;
+            }
+
+            if (!$reflection->hasProperty($key)) {
+                Debug::warn("Property '$key' does not exist on component of type: " . $componentClass);
+                continue;
+            }
+
+            $property = $reflection->getProperty($key);
+
+            if (!$property->isPublic() && !$property->getAttributes(SerializeField::class)) {
+                continue;
+            }
+
+            $property->setValue($component, $value);
+        }
     }
 }

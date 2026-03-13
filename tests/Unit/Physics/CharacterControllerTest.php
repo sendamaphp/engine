@@ -1,14 +1,30 @@
 <?php
 
+use Sendama\Engine\Core\Behaviours\Behaviour;
 use Sendama\Engine\Core\GameObject;
+use Sendama\Engine\Core\Grid;
 use Sendama\Engine\Core\Sprite;
 use Sendama\Engine\Core\Texture;
 use Sendama\Engine\Core\Vector2;
 use Sendama\Engine\Physics\CharacterController;
 use Sendama\Engine\Physics\Collider;
+use Sendama\Engine\Physics\EnvironmentCollision;
 use Sendama\Engine\Physics\Interfaces\ColliderInterface;
+use Sendama\Engine\Physics\Interfaces\CollisionInterface;
 use Sendama\Engine\Physics\Physics;
 use Sendama\Engine\Util\Path;
+
+if (!class_exists(CharacterControllerCollisionProbe::class)) {
+  class CharacterControllerCollisionProbe extends Behaviour
+  {
+    public array $collisionTypes = [];
+
+    public function onCollisionEnter(CollisionInterface $collision): void
+    {
+      $this->collisionTypes[] = get_class($collision);
+    }
+  }
+}
 
 beforeEach(function () {
   Physics::getInstance()->init();
@@ -101,4 +117,20 @@ it('ignores self while still detecting different colliders on objects with the s
 
   expect($firstCollider->isTouching($firstCollider))->toBeFalse()
     ->and($firstCollider->isTouching($secondCollider))->toBeTrue();
+});
+
+it('creates environment collisions for static collision map cells', function () {
+  $staticMap = new Grid(10, 10, 0);
+  $staticMap->set(1, 0, 1);
+  Physics::getInstance()->loadStaticCollisionMap($staticMap);
+
+  [$player, $controller] = ($this->makeCollider)('Player', new Vector2(0, 0), CharacterController::class);
+  $probe = $player->addComponent(CharacterControllerCollisionProbe::class);
+
+  ob_start();
+  $controller->move(new Vector2(1, 0));
+  ob_end_clean();
+
+  expect($player->getTransform()->getPosition()->getX())->toBe(0)
+    ->and($probe->collisionTypes)->toBe([EnvironmentCollision::class]);
 });

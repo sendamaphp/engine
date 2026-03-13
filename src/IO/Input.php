@@ -26,10 +26,10 @@ class Input
   /**
    * Checks if a key is pressed.
    *
-   * @param KeyCode $keyCode The key code to check.
+   * @param KeyCode|string $keyCode The key code to check.
    * @return bool Returns true if the key is pressed, false otherwise.
    */
-  public static function isKeyPressed(KeyCode $keyCode): bool
+  public static function isKeyPressed(KeyCode|string $keyCode): bool
   {
     return InputManager::isKeyPressed($keyCode);
   }
@@ -37,7 +37,7 @@ class Input
   /**
    * Checks if all the given keys are pressed.
    *
-   * @param array<KeyCode> $keyCodes The key codes to check.
+   * @param array<KeyCode|string> $keyCodes The key codes to check.
    * @return bool Returns true if any key is pressed, false otherwise.
    */
   public static function areAllKeysPressed(array $keyCodes): bool
@@ -48,7 +48,7 @@ class Input
   /**
    * Checks if any of the given keys are pressed.
    *
-   * @param array<KeyCode> $keyCodes
+   * @param array<KeyCode|string> $keyCodes
    * @return bool Returns true if any key is pressed, false otherwise.
    */
   public static function isAnyKeyPressed(array $keyCodes, bool $ignoreCase = true): bool
@@ -59,7 +59,7 @@ class Input
   /**
    * Checks if any of the given keys are released.
    *
-   * @param array<KeyCode> $keyCodes The key codes to check.
+   * @param array<KeyCode|string> $keyCodes The key codes to check.
    * @return bool Returns true if any key is released, false otherwise.
    */
   public static function isAnyKeyReleased(array $keyCodes): bool
@@ -70,10 +70,10 @@ class Input
   /**
    * Checks if the given key is pressed.
    *
-   * @param KeyCode $keyCode The key code to check.
+   * @param KeyCode|string $keyCode The key code to check.
    * @return bool Returns true if the key is pressed, false otherwise.
    */
-  public static function isKeyDown(KeyCode $keyCode): bool
+  public static function isKeyDown(KeyCode|string $keyCode): bool
   {
     return InputManager::isKeyDown($keyCode);
   }
@@ -81,10 +81,10 @@ class Input
   /**
    * Checks if the given key was released.
    *
-   * @param KeyCode $keyCode The key code to check.
+   * @param KeyCode|string $keyCode The key code to check.
    * @return bool Returns true if the key was released, false otherwise.
    */
-  public static function isKeyUp(KeyCode $keyCode): bool
+  public static function isKeyUp(KeyCode|string $keyCode): bool
   {
     return InputManager::isKeyUp($keyCode);
   }
