@@ -1,0 +1,8 @@
+{
+    "project": {
+        "name": "blasters",
+        "description": "A simple 2D Shoot 'em up.",
+        "version": "1.0.0",
+        "main": "blasters.php"
+    }
+}

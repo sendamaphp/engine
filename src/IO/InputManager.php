@@ -192,7 +192,7 @@ class InputManager
   /**
    * Checks if any key is pressed.
    *
-   * @param KeyCode[] $keyCodes The key codes to check.
+   * @param array<KeyCode|string> $keyCodes The key codes to check.
    * @return bool Returns true if any key is pressed, false otherwise.
    */
   public static function isAnyKeyPressed(array $keyCodes, bool $ignoreCase = true): bool
@@ -203,11 +203,17 @@ class InputManager
   /**
    * Checks if a key is pressed down.
    *
-   * @param KeyCode $keyCode The key code to check.
+   * @param KeyCode|string $keyCode The key code to check.
    * @return bool Returns true if the key is pressed down, false otherwise.
    */
-  public static function isKeyDown(KeyCode $keyCode, bool $ignoreCase = true): bool
+  public static function isKeyDown(KeyCode|string $keyCode, bool $ignoreCase = true): bool
   {
+    $keyCode = self::normalizeKeyCode($keyCode);
+
+    if ($keyCode === null) {
+      return false;
+    }
+
     $key = self::getKey(self::$keyPress);
     $previousKey = self::getKey(self::$previousKeyPress);
     $keyCodeValue = $keyCode->value;
@@ -224,7 +230,7 @@ class InputManager
   /**
    * Checks if all keys are pressed.
    *
-   * @param KeyCode[] $keyCodes The key codes to check.
+   * @param array<KeyCode|string> $keyCodes The key codes to check.
    * @return bool Returns true if all keys are pressed, false otherwise.
    */
   public static function areAllKeysPressed(array $keyCodes): bool
@@ -235,18 +241,24 @@ class InputManager
   /**
    * Checks if a key is pressed.
    *
-   * @param KeyCode $keyCode The key code to check.
+   * @param KeyCode|string $keyCode The key code to check.
    * @return bool Returns true if the key is pressed, false otherwise.
    */
-  public static function isKeyPressed(KeyCode $keyCode): bool
+  public static function isKeyPressed(KeyCode|string $keyCode): bool
   {
+    $keyCode = self::normalizeKeyCode($keyCode);
+
+    if ($keyCode === null) {
+      return false;
+    }
+
     return self::$keyPress === $keyCode->value;
   }
 
   /**
    * Checks if any of the given key codes was released.
    *
-   * @param KeyCode[] $keyCodes The key codes to check.
+   * @param array<KeyCode|string> $keyCodes The key codes to check.
    * @return bool Returns true if any key is released, false otherwise.
    */
   public static function isAnyKeyReleased(array $keyCodes): bool
@@ -257,11 +269,17 @@ class InputManager
   /**
    * Checks if a key is released.
    *
-   * @param KeyCode $keyCode The key code to check.
+   * @param KeyCode|string $keyCode The key code to check.
    * @return bool Returns true if the key is released, false otherwise.
    */
-  public static function isKeyUp(KeyCode $keyCode): bool
+  public static function isKeyUp(KeyCode|string $keyCode): bool
   {
+    $keyCode = self::normalizeKeyCode($keyCode);
+
+    if ($keyCode === null) {
+      return false;
+    }
+
     $key = self::getKey(self::$keyPress);
     $previousKey = self::getKey(self::$previousKeyPress);
 
@@ -308,5 +326,33 @@ class InputManager
   private static function findAxis(string $axisName): ?VirtualAxis
   {
     return array_filter(self::$axes, fn($axis) => $axis->getName() === $axisName)[0] ?? null;
+  }
+
+  /**
+   * Normalizes persisted/string key codes into enum instances.
+   *
+   * Supports raw enum values like `escape`, single characters like `R`, and editor-style wrapped values like `<R>`.
+   *
+   * @param KeyCode|string $keyCode
+   * @return KeyCode|null
+   */
+  private static function normalizeKeyCode(KeyCode|string $keyCode): ?KeyCode
+  {
+    if ($keyCode instanceof KeyCode) {
+      return $keyCode;
+    }
+
+    $candidate = trim($keyCode);
+
+    if ($candidate === '') {
+      return null;
+    }
+
+    if (preg_match('/^<(.+)>$/', $candidate, $matches) === 1) {
+      $candidate = trim($matches[1]);
+    }
+
+    return KeyCode::tryFrom($candidate)
+      ?? KeyCode::tryFrom(mb_strtolower($candidate));
   }
 }

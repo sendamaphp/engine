@@ -448,6 +448,7 @@ class Console
     $cursor = self::cursor();
     $cursor->moveTo($columnStart, $row);
     echo $visibleMessage;
+    self::updateBuffer($visibleMessage, $columnStart, $row);
   }
 
   /**
@@ -495,12 +496,52 @@ class Console
    */
   public static function charAt(int $x, int $y): string
   {
-    if ($x < 0 || $x > DEFAULT_SCREEN_WIDTH || $y < 1 || $y > DEFAULT_SCREEN_HEIGHT) {
+    if ($x < 1 || $x > self::$width || $y < 1 || $y > self::$height) {
       return '';
     }
 
-    $char = substr(self::$buffer[$y], $x, 1);
-    return ord($char) === 0 ? ' ' : $char;
+    return self::$buffer->get($x - 1, $y - 1);
+  }
+
+  /**
+   * Returns a plain-text segment from the current terminal buffer using logical coordinates.
+   *
+   * @param int $x The logical x position.
+   * @param int $y The logical y position.
+   * @param int $width The number of visible glyphs to read.
+   * @return string
+   */
+  public static function readLineSegment(int $x, int $y, int $width): string
+  {
+    if ($width < 1) {
+      return '';
+    }
+
+    if (!isset(self::$buffer)) {
+      self::$buffer = self::getEmptyBuffer();
+    }
+
+    $row = self::$renderOffsetY + $y - 1;
+    $columnStart = self::$renderOffsetX + $x - 1;
+    $buffer = '';
+
+    for ($column = 0; $column < $width; $column++) {
+      $terminalColumn = $columnStart + $column;
+
+      if (
+        $row < 1 ||
+        $row > self::$height ||
+        $terminalColumn < 1 ||
+        $terminalColumn > self::$width
+      ) {
+        $buffer .= ' ';
+        continue;
+      }
+
+      $buffer .= self::$buffer->get($terminalColumn - 1, $row - 1);
+    }
+
+    return $buffer;
   }
 
   /**
@@ -676,5 +717,39 @@ class Console
     }
 
     return $glyphs;
+  }
+
+  /**
+   * Mirrors visible console output into the terminal buffer.
+   *
+   * @param string $visibleMessage The already-clipped message written to the terminal.
+   * @param int $columnStart The terminal column where the write started.
+   * @param int $row The terminal row where the write started.
+   * @return void
+   */
+  private static function updateBuffer(string $visibleMessage, int $columnStart, int $row): void
+  {
+    if (!isset(self::$buffer)) {
+      self::$buffer = self::getEmptyBuffer();
+    }
+
+    $plainText = preg_replace('/\033\[[0-9;]*m/', '', $visibleMessage) ?? '';
+    $glyphs = Unicode::characters($plainText);
+
+    foreach ($glyphs as $index => $glyph) {
+      $bufferX = ($columnStart - 1) + $index;
+      $bufferY = $row - 1;
+
+      if (
+        $bufferX < 0 ||
+        $bufferX >= self::$width ||
+        $bufferY < 0 ||
+        $bufferY >= self::$height
+      ) {
+        continue;
+      }
+
+      self::$buffer->set($bufferX, $bufferY, $glyph);
+    }
   }
 }

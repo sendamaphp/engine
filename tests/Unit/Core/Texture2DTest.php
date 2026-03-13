@@ -30,7 +30,7 @@ describe('Texture', function () {
       ->toBe($height);
   });
 
-  it('can control the texture coloer', function() {
+  it('can control the texture color', function() {
     $texture = new Texture($this->texturePath);
     $color = Color::RED;
 

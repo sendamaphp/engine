@@ -1,10 +1,28 @@
 <?php
 
+use Sendama\Engine\Core\Behaviours\Attributes\SerializeField;
+use Sendama\Engine\Core\Behaviours\Behaviour;
 use Sendama\Engine\Core\Rect;
 use Sendama\Engine\Core\Scenes\SceneManager;
 use Sendama\Engine\Core\Vector2;
 use Sendama\Engine\IO\Console\Console;
+use Sendama\Engine\Physics\Physics;
 use Sendama\Engine\Util\Path;
+
+if (!class_exists(SceneManagerDataProbe::class)) {
+  class SceneManagerDataProbe extends Behaviour
+  {
+    public int $speed = 0;
+
+    #[SerializeField]
+    protected int $power = 0;
+
+    public function getPower(): int
+    {
+      return $this->power;
+    }
+  }
+}
 
 beforeEach(function () {
   resetSceneManagerStaticProperty(SceneManager::class, 'instance', null);
@@ -22,7 +40,11 @@ beforeEach(function () {
     'screen_height' => 40,
   ]);
 
+  Physics::getInstance()->init();
+
   $this->scenePath = Path::join(dirname(__DIR__, 3), 'Mocks', 'Scenes', 'scene_with_dimensions');
+  $this->sceneWithComponentDataPath = Path::join(dirname(__DIR__, 3), 'Mocks', 'Scenes', 'scene_with_component_data');
+  $this->sceneWithEnvironmentCollisionPath = Path::join(dirname(__DIR__, 3), 'Mocks', 'Scenes', 'scene_with_environment_collision');
 });
 
 it('applies file scene dimensions to the active viewport and centered layout', function () {
@@ -44,6 +66,38 @@ it('applies file scene dimensions to the active viewport and centered layout', f
     ->and($scene->getCamera()->getViewport()->getHeight())->toBe(25)
     ->and($offset->getX())->toBe($expectedOffsetX)
     ->and($offset->getY())->toBe($expectedOffsetY);
+});
+
+it('hydrates component data from editor scene files', function () {
+  ob_start();
+  $this->sceneManager->loadSceneFromFile($this->sceneWithComponentDataPath);
+  $this->sceneManager->loadScene('Scene With Component Data');
+  ob_end_clean();
+
+  $scene = $this->sceneManager->getActiveScene();
+
+  expect($scene)->not()->toBeNull();
+
+  $probeGameObject = $scene->getRootGameObjects()[0] ?? null;
+  $probeComponent = $probeGameObject?->getComponent(SceneManagerDataProbe::class);
+
+  expect($probeComponent)->toBeInstanceOf(SceneManagerDataProbe::class)
+    ->and($probeComponent->speed)->toBe(3)
+    ->and($probeComponent->getPower())->toBe(7);
+});
+
+it('loads static collision maps from scene metadata without requiring a rendered tile map', function () {
+  ob_start();
+  $this->sceneManager->loadSceneFromFile($this->sceneWithEnvironmentCollisionPath);
+  $this->sceneManager->loadScene('Scene With Environment Collision');
+  ob_end_clean();
+
+  $scene = $this->sceneManager->getActiveScene();
+
+  expect($scene)->not()->toBeNull()
+    ->and($scene->getCollisionWorldSpace()->get(2, 1))->toBe(1)
+    ->and(Physics::getInstance()->isTouchingStaticObject(new Vector2(2, 1)))->toBeTrue()
+    ->and(Physics::getInstance()->isTouchingStaticObject(new Vector2(0, 0)))->toBeFalse();
 });
 
 function resetSceneManagerStaticProperty(string $className, string $propertyName, mixed $value): void

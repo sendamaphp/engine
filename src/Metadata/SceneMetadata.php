@@ -9,6 +9,7 @@ class SceneMetadata
     public int $width = DEFAULT_SCREEN_WIDTH;
     public int $height = DEFAULT_SCREEN_HEIGHT;
     public string $environmentTileMapPath = '';
+    public string $environmentCollisionMapPath = '';
     /** @var SceneObjectMetadataInterface[] */
     public array $hierarchy = [];
 }

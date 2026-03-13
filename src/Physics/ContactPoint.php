@@ -17,12 +17,12 @@ readonly class ContactPoint
    *
    * @param Vector2 $point The point of contact.
    * @param ColliderInterface<T> $thisCollider The collider of the game object that this contact point belongs to.
-   * @param ColliderInterface<T> $otherCollider The collider of the other game object that this contact point belongs to.
+   * @param ColliderInterface<T>|null $otherCollider The collider of the other game object that this contact point belongs to.
    */
   public function __construct(
     protected Vector2 $point,
     protected ColliderInterface $thisCollider,
-    protected ColliderInterface $otherCollider,
+    protected ?ColliderInterface $otherCollider,
   )
   {
   }
@@ -50,9 +50,9 @@ readonly class ContactPoint
   /**
    * Get the collider of the other game object that this contact point belongs to.
    *
-   * @return ColliderInterface<T> The collider of the other game object that this contact point belongs to.
+   * @return ColliderInterface<T>|null The collider of the other game object that this contact point belongs to.
    */
-  public function getOtherCollider(): ColliderInterface
+  public function getOtherCollider(): ?ColliderInterface
   {
     return $this->otherCollider;
   }
@@ -64,6 +64,10 @@ readonly class ContactPoint
    */
   public function getNormal(): Vector2
   {
+    if ($this->otherCollider === null) {
+      return Vector2::difference($this->point, $this->thisCollider->getTransform()->getPosition())->getNormalized();
+    }
+
     $otherPosition = $this->otherCollider->getTransform()->getPosition();
     $thisPosition = $this->thisCollider->getTransform()->getPosition();
 
@@ -77,6 +81,10 @@ readonly class ContactPoint
    */
   public function getSeparation(): float
   {
+    if ($this->otherCollider === null) {
+      return Vector2::distance($this->thisCollider->getTransform()->getPosition(), $this->point);
+    }
+
     return Vector2::distance(
       $this->thisCollider->getTransform()->getPosition(),
       $this->otherCollider->getTransform()->getPosition()

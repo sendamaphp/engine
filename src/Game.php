@@ -372,8 +372,10 @@ class Game implements ObservableInterface
     private function initializeSettings(): void
     {
         // Load environment variables
-        if (file_exists($this->workingDirectory ?? getcwd() . '/.env')) {
-            $dotenv = Dotenv::createImmutable(getcwd());
+        $environmentDirectory = $this->workingDirectory ?? getcwd();
+
+        if (file_exists(Path::join($environmentDirectory, '.env'))) {
+            $dotenv = Dotenv::createImmutable($environmentDirectory);
             $dotenv->load();
         }
 
@@ -404,7 +406,7 @@ class Game implements ObservableInterface
             ['showDebugInfo', SettingsKey::DEBUG_INFO->value, 'show_debug_info', 'debug.showInfo', 'debug.showDebugInfo'],
             false
         );
-        $this->settings[SettingsKey::LOG_LEVEL->value] = $_ENV['LOG_LEVEL'] ?? DEFAULT_LOG_LEVEL;
+        $this->settings[SettingsKey::LOG_LEVEL->value] = self::resolveConfiguredLogLevelValue();
         Debug::setLogLevel(LogLevel::tryFrom((string)$this->getSettings('log_level')) ?? LogLevel::DEBUG);
 
         $this->settings[SettingsKey::LOG_DIR->value] = Path::join(getcwd(), DEFAULT_LOGS_DIR);
@@ -442,10 +444,10 @@ class Game implements ObservableInterface
         try {
             $settings ??= [];
 
-            $this->settings[SettingsKey::LOG_LEVEL->value] = $settings[SettingsKey::LOG_LEVEL->value]
-                ?? $_ENV['LOG_LEVEL']
-                ?? $this->settings[SettingsKey::LOG_LEVEL->value]
-                ?? DEFAULT_LOG_LEVEL;
+            $this->settings[SettingsKey::LOG_LEVEL->value] = self::resolveConfiguredLogLevelValue(
+                $settings,
+                $this->settings[SettingsKey::LOG_LEVEL->value] ?? null
+            );
             $this->settings[SettingsKey::LOG_DIR->value] = $settings[SettingsKey::LOG_DIR->value]
                 ?? $_ENV['LOG_DIR']
                 ?? $this->settings[SettingsKey::LOG_DIR->value]
@@ -809,6 +811,23 @@ class Game implements ObservableInterface
         }
 
         return max(1, (int)$this->getSettings(SettingsKey::SCREEN_HEIGHT->value));
+    }
+
+    /**
+     * Resolves the configured log level, allowing env to override file settings.
+     *
+     * @param array<string, mixed> $settings
+     * @param string|null $existingValue
+     * @return string
+     */
+    private static function resolveConfiguredLogLevelValue(array $settings = [], ?string $existingValue = null): string
+    {
+        $envValue = isset($_ENV['LOG_LEVEL']) ? trim((string)$_ENV['LOG_LEVEL']) : null;
+        $settingsValue = $settings[SettingsKey::LOG_LEVEL->value]
+            ?? $settings['logLevel']
+            ?? null;
+
+        return trim((string)($envValue ?? $settingsValue ?? $existingValue ?? DEFAULT_LOG_LEVEL));
     }
 
     /**

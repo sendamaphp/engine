@@ -64,9 +64,17 @@ abstract class AbstractScene implements SceneInterface
      */
     protected string $environmentTileMapPath = '';
     /**
-     * @var string $environmentTileMapPath
+     * @var string $environmentCollisionMapPath
+     */
+    protected string $environmentCollisionMapPath = '';
+    /**
+     * @var string $environmentTileMapData
      */
     protected string $environmentTileMapData = '';
+    /**
+     * @var string $environmentCollisionMapData
+     */
+    protected string $environmentCollisionMapData = '';
 
     /**
      * @var bool $started
@@ -91,6 +99,10 @@ abstract class AbstractScene implements SceneInterface
         if ($this->environmentTileMapPath) {
             $this->loadEnvironmentTileMapData($this->environmentTileMapPath);
         }
+
+        if ($this->environmentCollisionMapPath) {
+            $this->loadEnvironmentCollisionMapData($this->environmentCollisionMapPath);
+        }
     }
 
     /**
@@ -108,27 +120,51 @@ abstract class AbstractScene implements SceneInterface
     private function loadEnvironmentTileMapData(?string $path = null): void
     {
         Debug::info("Loading environment tile map data: $path");
-        // Check if the file exists
-        if (!file_exists($this->getAbsoluteEnvironmentTileMapPath())) {
-            throw new FileNotFoundException($this->getAbsoluteEnvironmentTileMapPath());
-        }
-
-        if (!is_file($this->getAbsoluteEnvironmentTileMapPath())) {
-            throw new FileNotFoundException($this->getAbsoluteEnvironmentTileMapPath());
-        }
-
-        // Get the contents of the file
-        $this->environmentTileMapData = file_get_contents($this->getAbsoluteEnvironmentTileMapPath());
+        $this->environmentTileMapData = $this->loadEnvironmentMapData($this->getAbsoluteEnvironmentMapPath($path));
     }
 
     /**
-     * Returns the absolute path to the environment tile map file.
+     * Loads the environment collision map data from a file on disk.
      *
-     * @return string The absolute path to the environment tile map file.
+     * @param string|null $path The path to the environment collision map file.
+     * @return void
+     * @throws FileNotFoundException If the file does not exist.
      */
-    private function getAbsoluteEnvironmentTileMapPath(): string
+    private function loadEnvironmentCollisionMapData(?string $path = null): void
     {
-        return Path::join(Path::getWorkingDirectoryAssetsPath(), $this->environmentTileMapPath) . self::MAP_FILE_EXTENSION;
+        Debug::info("Loading environment collision map data: $path");
+        $this->environmentCollisionMapData = $this->loadEnvironmentMapData($this->getAbsoluteEnvironmentMapPath($path));
+    }
+
+    /**
+     * Returns the absolute path to an environment map file.
+     *
+     * @param string|null $path The relative map path.
+     * @return string The absolute path to the environment map file.
+     */
+    private function getAbsoluteEnvironmentMapPath(?string $path): string
+    {
+        return Path::join(Path::getWorkingDirectoryAssetsPath(), $path ?? '') . self::MAP_FILE_EXTENSION;
+    }
+
+    /**
+     * Loads a generic environment map file from disk.
+     *
+     * @param string $absolutePath
+     * @return string
+     * @throws FileNotFoundException
+     */
+    private function loadEnvironmentMapData(string $absolutePath): string
+    {
+        if (!file_exists($absolutePath)) {
+            throw new FileNotFoundException($absolutePath);
+        }
+
+        if (!is_file($absolutePath)) {
+            throw new FileNotFoundException($absolutePath);
+        }
+
+        return file_get_contents($absolutePath);
     }
 
     /**
@@ -414,6 +450,7 @@ abstract class AbstractScene implements SceneInterface
 
         $this->createWorldSpace();
         $this->loadStaticEnvironment();
+        $this->loadStaticCollisionEnvironment();
 
         foreach ($this->rootGameObjects as $gameObject) {
             $gameObject->start();
@@ -463,6 +500,33 @@ abstract class AbstractScene implements SceneInterface
         }
 
         $this->camera->renderWorldSpace();
+    }
+
+    /**
+     * Loads the static environment collision map for the scene.
+     *
+     * @return void
+     */
+    private function loadStaticCollisionEnvironment(): void
+    {
+        Debug::info('Loading static collision environment for ' . $this->name);
+
+        if ($this->environmentCollisionMapData) {
+            $lines = explode("\n", $this->environmentCollisionMapData);
+
+            if (end($lines) === '') {
+                array_pop($lines);
+            }
+
+            foreach ($lines as $y => $line) {
+                $glyphs = Unicode::characters($line);
+                foreach ($glyphs as $x => $glyph) {
+                    $this->collisionWorldSpace->set($x, $y, trim($glyph) === '' ? 0 : 1);
+                }
+            }
+        }
+
+        $this->physics->loadStaticCollisionMap($this->collisionWorldSpace);
     }
 
     /**

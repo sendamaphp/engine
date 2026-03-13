@@ -9,6 +9,7 @@ use Sendama\Engine\Core\Sprite;
 use Sendama\Engine\Core\Scenes\SceneManager;
 use Sendama\Engine\IO\Console\Console;
 use Sendama\Engine\IO\Console\Cursor;
+use Sendama\Engine\Util\Unicode;
 
 class Renderer extends Component implements CanRender
 {
@@ -16,6 +17,10 @@ class Renderer extends Component implements CanRender
    * @var array{x: int, y: int, width: int, height: int}|null
    */
   protected ?array $lastRenderedBounds = null;
+  /**
+   * @var string[]|null
+   */
+  protected ?array $lastRenderedBackground = null;
   /**
    * The console cursor.
    *
@@ -78,9 +83,25 @@ class Renderer extends Component implements CanRender
 
     $xOffset = $this->getGameObject()->getTransform()->getPosition()->getX() + ($x ?? 0);
     $yOffset = $this->getGameObject()->getTransform()->getPosition()->getY() + ($y ?? 0);
+    $width = $this->sprite->getRect()->getWidth();
+    $height = $this->sprite->getRect()->getHeight();
     $spriteBufferedImage = $this->sprite->getBufferedImage();
+    $currentBounds = [
+      'x' => $xOffset,
+      'y' => $yOffset,
+      'width' => $width,
+      'height' => $height,
+    ];
 
-    for ($row = 0; $row < $this->sprite->getRect()->getHeight(); $row++) {
+    if ($this->lastRenderedBounds !== null && $this->lastRenderedBounds !== $currentBounds) {
+      $this->restoreLastRenderedBackground();
+    }
+
+    if ($this->lastRenderedBounds !== $currentBounds) {
+      $this->lastRenderedBackground = $this->captureBackground($xOffset, $yOffset, $width, $height);
+    }
+
+    for ($row = 0; $row < $height; $row++) {
       Console::write(
         implode($spriteBufferedImage[$row] ?? []),
         $xOffset,
@@ -88,12 +109,7 @@ class Renderer extends Component implements CanRender
       );
     }
 
-    $this->lastRenderedBounds = [
-      'x' => $xOffset,
-      'y' => $yOffset,
-      'width' => $this->sprite->getRect()->getWidth(),
-      'height' => $this->sprite->getRect()->getHeight(),
-    ];
+    $this->lastRenderedBounds = $currentBounds;
   }
 
   /**
@@ -113,6 +129,20 @@ class Renderer extends Component implements CanRender
       return;
     }
 
+    $this->restoreLastRenderedBackground();
+  }
+
+  /**
+   * Restores the previously drawn region underneath this renderer.
+   *
+   * @return void
+   */
+  private function restoreLastRenderedBackground(): void
+  {
+    if (!$this->lastRenderedBounds) {
+      return;
+    }
+
     $xOffset = $this->lastRenderedBounds['x'];
     $yOffset = $this->lastRenderedBounds['y'];
     $width = $this->lastRenderedBounds['width'];
@@ -120,13 +150,60 @@ class Renderer extends Component implements CanRender
 
     for ($row = 0; $row < $height; $row++) {
       Console::write(
-        $this->getBackgroundRowSegment($xOffset, $yOffset + $row, $width),
+        $this->lastRenderedBackground[$row] ?? $this->getBackgroundRowSegment($xOffset, $yOffset + $row, $width),
         $xOffset,
         $yOffset + $row
       );
     }
 
     $this->lastRenderedBounds = null;
+    $this->lastRenderedBackground = null;
+  }
+
+  /**
+   * Captures the visible background currently underneath the sprite bounds.
+   *
+   * @param int $xOffset
+   * @param int $yOffset
+   * @param int $width
+   * @param int $height
+   * @return string[]
+   */
+  private function captureBackground(int $xOffset, int $yOffset, int $width, int $height): array
+  {
+    $background = [];
+
+    for ($row = 0; $row < $height; $row++) {
+      $background[] = $this->getCurrentBackgroundRowSegment($xOffset, $yOffset + $row, $width);
+    }
+
+    return $background;
+  }
+
+  /**
+   * Returns the best background segment for the given row by preferring current console content
+   * and falling back to static world-space tiles where the buffer is blank.
+   *
+   * @param int $xOffset
+   * @param int $yOffset
+   * @param int $width
+   * @return string
+   */
+  private function getCurrentBackgroundRowSegment(int $xOffset, int $yOffset, int $width): string
+  {
+    $bufferSegment = Console::readLineSegment($xOffset, $yOffset, $width);
+    $worldSegment = $this->getBackgroundRowSegment($xOffset, $yOffset, $width);
+    $bufferGlyphs = Unicode::characters($bufferSegment);
+    $worldGlyphs = Unicode::characters($worldSegment);
+    $composed = '';
+
+    for ($column = 0; $column < $width; $column++) {
+      $bufferGlyph = $bufferGlyphs[$column] ?? ' ';
+      $worldGlyph = $worldGlyphs[$column] ?? ' ';
+      $composed .= $bufferGlyph !== ' ' ? $bufferGlyph : $worldGlyph;
+    }
+
+    return $composed;
   }
 
   /**

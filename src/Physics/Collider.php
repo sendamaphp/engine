@@ -3,6 +3,7 @@
 namespace Sendama\Engine\Physics;
 
 use Override;
+use Sendama\Engine\Core\Behaviours\Attributes\SerializeField;
 use Sendama\Engine\Core\Component;
 use Sendama\Engine\Physics\Interfaces\ColliderInterface;
 use Sendama\Engine\Physics\Interfaces\CollisionDetectionStrategyInterface;
@@ -28,12 +29,19 @@ class Collider extends Component implements ColliderInterface
    */
   protected ?Physics $physics = null;
 
+  #[SerializeField]
   /**
    * Whether the collider is a trigger.
    *
    * @var bool
    */
   protected bool $isTrigger = false;
+  /**
+   * The physics material used when resolving friction and bounce.
+   *
+   * @var PhysicsMaterial
+   */
+  protected PhysicsMaterial $material;
   /**
    * The collision detection strategy.
    *
@@ -49,6 +57,7 @@ class Collider extends Component implements ColliderInterface
   {
     $this->physics = Physics::getInstance();
     $this->collisionDetectionStrategy = new AABBCollisionDetectionStrategy($this);
+    $this->material = new PhysicsMaterial();
   }
 
   /**
@@ -88,7 +97,34 @@ class Collider extends Component implements ColliderInterface
    */
   public function configure(array $options = []): void
   {
-    // Do nothing
+    if (array_key_exists('isTrigger', $options)) {
+      $this->setTrigger((bool)$options['isTrigger']);
+    }
+
+    if (array_key_exists('material', $options)) {
+      $this->setMaterial($options['material']);
+    }
+  }
+
+  /**
+   * Returns the collider's physics material.
+   *
+   * @return PhysicsMaterial
+   */
+  public function getMaterial(): PhysicsMaterial
+  {
+    return $this->material;
+  }
+
+  /**
+   * Sets the collider's physics material.
+   *
+   * @param mixed $material
+   * @return void
+   */
+  public function setMaterial(mixed $material): void
+  {
+    $this->material = PhysicsMaterial::fromMetadata($material);
   }
 
   /**
