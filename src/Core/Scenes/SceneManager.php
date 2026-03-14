@@ -373,7 +373,12 @@ final class SceneManager implements SingletonInterface, CanStart, CanResume, Can
         $filename = $path . self::SCENE_FILE_EXTENSION;
 
         if (!file_exists($filename)) {
-            throw new SceneNotFoundException($path);
+            // Try assets rather than Assets
+            $filename = str_replace('Assets', 'assets', $filename);
+
+            if (!file_exists($filename)) {
+                throw new SceneNotFoundException($path);
+            }
         }
 
         $sceneMetadata = require($filename);
