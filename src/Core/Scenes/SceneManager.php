@@ -2,7 +2,10 @@
 
 namespace Sendama\Engine\Core\Scenes;
 
+use ReflectionNamedType;
 use ReflectionObject;
+use ReflectionProperty;
+use ReflectionUnionType;
 use Assegai\Collections\ItemList;
 use Sendama\Engine\Core\Behaviours\Attributes\SerializeField;
 use Sendama\Engine\Core\GameObject;
@@ -31,6 +34,8 @@ use Sendama\Engine\Physics\Interfaces\ColliderInterface;
 use Sendama\Engine\Physics\Physics;
 use Sendama\Engine\UI\Label\Label;
 use Sendama\Engine\UI\Text\Text;
+use Sendama\Engine\Util\Path;
+use Throwable;
 use function dispatchEvent;
 
 /**
@@ -411,7 +416,7 @@ final class SceneManager implements SingletonInterface, CanStart, CanResume, Can
                             continue;
                         }
 
-                        $itemName = $item?->name . " - $index" ?? throw new SceneManagementException("Invalid game object name");
+                        $itemName = $item->name ?? throw new SceneManagementException("Invalid game object name");
 
                         $position = new Vector2();
                         if (isset($item->position)) {
@@ -427,55 +432,7 @@ final class SceneManager implements SingletonInterface, CanStart, CanResume, Can
 
                         switch ($item->type) {
                             case GameObject::class:
-                                $rotation = new Vector2();
-                                if (isset($item->rotation)) {
-                                    $rotation = Vector2::fromArray((array)$item->rotation);
-                                }
-
-                                $scale = new Vector2();
-                                if (isset($item->scale)) {
-                                    $scale = Vector2::fromArray((array)$item->scale);
-                                }
-
-                                $gameObject = new GameObject(
-                                    $itemName,
-                                    $item?->tag,
-                                    $position,
-                                    $rotation,
-                                    $scale
-                                );
-
-                                if (isset($item->sprite)) {
-                                    if (!isset($item->sprite->texture)) {
-                                        throw new SceneManagementException("Sprite texture not defined for game object: " . $gameObject->getName());
-                                    }
-
-                                    $spriteTextureMetadata = $item->sprite->texture;
-                                    $spriteTexture = new Texture($spriteTextureMetadata->path ?? throw new SceneManagementException("Invalid sprite texture path"));
-                                    $spritePosition = new Vector2();
-                                    if (isset($spriteTextureMetadata->position)) {
-                                        $spritePosition = Vector2::fromArray((array)$spriteTextureMetadata->position);
-                                    }
-                                    $spriteSize = new Vector2();
-                                    if (isset($spriteTextureMetadata->size)) {
-                                        $spriteSize = Vector2::fromArray((array)$spriteTextureMetadata->size);
-                                    }
-
-                                    $gameObject->setSpriteFromTexture($spriteTexture, $spritePosition, $spriteSize);
-                                }
-
-                                if (isset($item->components)) {
-                                    foreach ($item->components as $componentMetadata) {
-                                        if (!isset($componentMetadata->class)) {
-                                            throw new SceneManagementException("Component class not defined for game object: " . $gameObject->getName());
-                                        }
-
-                                        $componentClass = $componentMetadata->class;
-                                        $component = $gameObject->addComponent($componentClass);
-                                        SceneManager::applySceneComponentMetadata($component, $componentClass, $componentMetadata);
-                                    }
-                                }
-
+                                $gameObject = SceneManager::inflateGameObjectMetadata($item);
                                 break;
 
                             default:
@@ -500,6 +457,150 @@ final class SceneManager implements SingletonInterface, CanStart, CanResume, Can
         };
 
         $this->addScene($scene);
+    }
+
+    /**
+     * Inflates a game object from scene/prefab metadata without attaching it to a scene.
+     *
+     * @param object|array<string, mixed> $itemMetadata
+     * @return GameObject
+     * @throws SceneManagementException
+     */
+    public static function inflateGameObjectMetadata(object|array $itemMetadata): GameObject
+    {
+        $item = self::normalizeMetadata($itemMetadata);
+
+        if (($item->type ?? null) !== GameObject::class) {
+            throw new SceneManagementException('Prefab metadata must describe a ' . GameObject::class . '.');
+        }
+
+        $itemName = $item->name ?? throw new SceneManagementException('Invalid game object name');
+        $position = isset($item->position)
+            ? Vector2::fromArray((array)$item->position)
+            : new Vector2();
+        $rotation = isset($item->rotation)
+            ? Vector2::fromArray((array)$item->rotation)
+            : new Vector2();
+        $scale = isset($item->scale)
+            ? Vector2::fromArray((array)$item->scale)
+            : new Vector2();
+
+        $gameObject = new GameObject(
+            $itemName,
+            $item->tag ?? null,
+            $position,
+            $rotation,
+            $scale
+        );
+
+        if (isset($item->sprite)) {
+            if (!isset($item->sprite->texture)) {
+                throw new SceneManagementException('Sprite texture not defined for game object: ' . $gameObject->getName());
+            }
+
+            $spriteTextureMetadata = $item->sprite->texture;
+            $spriteTexture = new Texture($spriteTextureMetadata->path ?? throw new SceneManagementException('Invalid sprite texture path'));
+            $spritePosition = isset($spriteTextureMetadata->position)
+                ? Vector2::fromArray((array)$spriteTextureMetadata->position)
+                : new Vector2();
+            $spriteSize = isset($spriteTextureMetadata->size)
+                ? Vector2::fromArray((array)$spriteTextureMetadata->size)
+                : new Vector2();
+
+            $gameObject->setSpriteFromTexture($spriteTexture, $spritePosition, $spriteSize);
+        }
+
+        if (isset($item->components)) {
+            foreach ($item->components as $componentMetadata) {
+                $componentMetadataObject = self::normalizeMetadata($componentMetadata);
+
+                if (!isset($componentMetadataObject->class)) {
+                    throw new SceneManagementException('Component class not defined for game object: ' . $gameObject->getName());
+                }
+
+                $componentClass = $componentMetadataObject->class;
+                $component = $gameObject->addComponent($componentClass);
+                self::applySceneComponentMetadata($component, $componentClass, $componentMetadataObject);
+            }
+        }
+
+        return $gameObject;
+    }
+
+    /**
+     * Loads and inflates a prefab reference into a concrete game object template.
+     *
+     * @param string $path
+     * @return GameObject
+     * @throws SceneManagementException
+     */
+    public static function loadPrefabFromPath(string $path): GameObject
+    {
+        $resolvedPath = self::resolvePrefabPath($path);
+
+        if (!$resolvedPath) {
+            throw new SceneManagementException("Prefab not found: {$path}");
+        }
+
+        try {
+            $prefabMetadata = require $resolvedPath;
+        } catch (Throwable $throwable) {
+            throw new SceneManagementException(
+                "Failed to load prefab at {$resolvedPath}: {$throwable->getMessage()}",
+                previous: $throwable
+            );
+        }
+
+        if (!is_array($prefabMetadata) && !is_object($prefabMetadata)) {
+            throw new SceneManagementException("Prefab metadata at {$resolvedPath} did not return a valid game object description.");
+        }
+
+        return self::inflateGameObjectMetadata($prefabMetadata);
+    }
+
+    /**
+     * Resolves a prefab reference from either an absolute filesystem path or an assets-relative path.
+     *
+     * @param string $path
+     * @return string|null
+     */
+    private static function resolvePrefabPath(string $path): ?string
+    {
+        if ($path === '') {
+            return null;
+        }
+
+        $candidates = [$path];
+        $assetsRelativePath = Path::join(Path::getWorkingDirectoryAssetsPath(), $path);
+        $candidates[] = $assetsRelativePath;
+
+        if (!str_ends_with(strtolower($path), '.prefab.php')) {
+            $candidates[] = $path . '.prefab.php';
+            $candidates[] = $assetsRelativePath . '.prefab.php';
+        }
+
+        foreach ($candidates as $candidate) {
+            if (is_file($candidate)) {
+                return Path::normalize($candidate);
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Normalizes scene/prefab metadata to an object for consistent property access.
+     *
+     * @param object|array<string, mixed> $metadata
+     * @return object
+     */
+    private static function normalizeMetadata(object|array $metadata): object
+    {
+        if (is_object($metadata)) {
+            return $metadata;
+        }
+
+        return json_decode(json_encode($metadata, JSON_UNESCAPED_SLASHES), false);
     }
 
     /**
@@ -548,7 +649,50 @@ final class SceneManager implements SingletonInterface, CanStart, CanResume, Can
                 continue;
             }
 
-            $property->setValue($component, $value);
+            $property->setValue($component, self::hydrateSceneComponentPropertyValue($property, $value));
         }
+    }
+
+    /**
+     * Converts serialized scene values into runtime objects when a typed property requires it.
+     *
+     * @param ReflectionProperty $property
+     * @param mixed $value
+     * @return mixed
+     * @throws SceneManagementException
+     */
+    private static function hydrateSceneComponentPropertyValue(ReflectionProperty $property, mixed $value): mixed
+    {
+        if (is_string($value) && self::propertyAcceptsClass($property, GameObject::class)) {
+            return self::loadPrefabFromPath($value);
+        }
+
+        return $value;
+    }
+
+    /**
+     * Determines whether the property type can accept the given class.
+     *
+     * @param ReflectionProperty $property
+     * @param class-string $className
+     * @return bool
+     */
+    private static function propertyAcceptsClass(ReflectionProperty $property, string $className): bool
+    {
+        $type = $property->getType();
+
+        if ($type instanceof ReflectionNamedType) {
+            return !$type->isBuiltin() && is_a($className, $type->getName(), true);
+        }
+
+        if ($type instanceof ReflectionUnionType) {
+            foreach ($type->getTypes() as $namedType) {
+                if ($namedType instanceof ReflectionNamedType && !$namedType->isBuiltin() && is_a($className, $namedType->getName(), true)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 }
