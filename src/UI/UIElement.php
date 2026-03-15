@@ -34,6 +34,7 @@ abstract class UIElement implements UIElementInterface
         protected string         $name,
         protected Vector2        $position = new Vector2(0, 0),
         protected Vector2        $size = new Vector2(0, 0),
+        protected string         $tag = '',
     )
     {
         $this->awake();
@@ -61,6 +62,46 @@ abstract class UIElement implements UIElementInterface
         }
 
         return null;
+    }
+
+    /**
+     * Finds a UI element by its tag.
+     *
+     * @param string $uiElementTagName The tag of the UI element.
+     * @return self|null The UI element if found, null otherwise.
+     */
+    public static function findByTag(string $uiElementTagName): ?UIElementInterface
+    {
+        if ($activeScene = SceneManager::getInstance()->getActiveScene()) {
+            foreach ($activeScene->getUIElements() as $element) {
+                if ($element->getTag() === $uiElementTagName) {
+                    return $element;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Finds all UI elements by their tag
+     *
+     * @param string $uiElementTagName The tag of the UI element.
+     * @return UIElementInterface[] The UI elements if found, an empty array otherwise.
+     */
+    public static function findAllByTag(string $uiElementTagName): array
+    {
+        $elements = [];
+
+        if ($activeScene = SceneManager::getInstance()->getActiveScene()) {
+            foreach ($activeScene->getUIElements() as $element) {
+                if ($element->getTag() === $uiElementTagName) {
+                    $elements[] = $element;
+                }
+            }
+        }
+
+        return $elements;
     }
 
     /**
@@ -92,6 +133,22 @@ abstract class UIElement implements UIElementInterface
     /**
      * @inheritDoc
      */
+    public function getTag(): string
+    {
+        return $this->tag;
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function setTag(string $tag): void
+    {
+        $this->tag = $tag;
+    }
+
+    /**
+     * @inheritDoc
+     */
     public function activate(): void
     {
         $this->active = true;
@@ -108,19 +165,29 @@ abstract class UIElement implements UIElementInterface
     /**
      * @inheritDoc
      */
-    public function isActive(): bool
-    {
-        return $this->active;
-    }
-
-    /**
-     * @inheritDoc
-     */
     public function resume(): void
     {
         if ($this->shouldRenderWithinScene()) {
             $this->render();
         }
+    }
+
+    /**
+     * Checks whether the element should write to the console right now.
+     *
+     * @return bool
+     */
+    protected function shouldRenderWithinScene(): bool
+    {
+        return $this->isActive() && $this->scene->isStarted();
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function isActive(): bool
+    {
+        return $this->active;
     }
 
     /**
@@ -181,15 +248,5 @@ abstract class UIElement implements UIElementInterface
     public function setSize(Vector2 $size): void
     {
         $this->size = $size;
-    }
-
-    /**
-     * Checks whether the element should write to the console right now.
-     *
-     * @return bool
-     */
-    protected function shouldRenderWithinScene(): bool
-    {
-        return $this->isActive() && $this->scene->isStarted();
     }
 }

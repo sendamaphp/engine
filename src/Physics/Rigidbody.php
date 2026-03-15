@@ -2,6 +2,7 @@
 
 namespace Sendama\Engine\Physics;
 
+use Sendama\Engine\Core\Behaviours\Attributes\SerializeField;
 use Sendama\Engine\Core\Time;
 use Sendama\Engine\Core\Vector2;
 use Sendama\Engine\Metadata\PhysicsMaterialMetadata;
@@ -19,12 +20,19 @@ class Rigidbody extends Collider
     private const float DEFAULT_FIXED_DELTA_TIME = 0.0166666667;
     private const float VELOCITY_EPSILON = 0.0001;
 
+    #[SerializeField]
     protected float $mass = 1.0;
+    #[SerializeField]
     protected float $drag = 0.0;
+    #[SerializeField]
     protected float $angularDrag = 0.0;
+    #[SerializeField]
     protected bool $useGravity = false;
+    #[SerializeField]
     protected bool $freezePositionX = false;
+    #[SerializeField]
     protected bool $freezePositionY = false;
+    #[SerializeField]
     protected bool $freezeRotation = false;
 
     protected float $velocityX = 0.0;

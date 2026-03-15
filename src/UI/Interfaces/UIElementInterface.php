@@ -17,61 +17,61 @@ use Sendama\Engine\Core\Vector2;
  */
 interface UIElementInterface extends CanUpdate, CanRender, CanStart, CanResume, CanActivate, CanAwake
 {
-  /**
-   * Gets the name of the UI element.
-   *
-   * @return string
-   */
-  public function getName(): string;
+    /**
+     * Finds a UI element by its name.
+     *
+     * @param string $uiElementName The name of the UI element.
+     * @return UIElementInterface|null The UI element if found, null otherwise.
+     */
+    public static function find(string $uiElementName): ?self;
 
-  /**
-   * Sets the name of the UI element.
-   *
-   * @param string $name The name of the UI element.
-   */
-  public function setName(string $name): void;
+    /**
+     * Finds all UI elements by their name.
+     *
+     * @param string $uiElementName The name of the UI element.
+     * @return UIElementInterface[] The UI elements if found, an empty array otherwise.
+     */
+    public static function findAll(string $uiElementName): array;
 
-  /**
-   * Returns the screen position of the UI element.
-   *
-   * @return Vector2 The screen position of the UI element.
-   */
-  public function getPosition(): Vector2;
+    /**
+     * Gets the name of the UI element.
+     *
+     * @return string
+     */
+    public function getName(): string;
 
-  /**
-   * Sets the screen position of the UI element.
-   *
-   * @param Vector2 $position The screen position of the UI element.
-   */
-  public function setPosition(Vector2 $position): void;
+    /**
+     * Sets the name of the UI element.
+     *
+     * @param string $name The name of the UI element.
+     */
+    public function setName(string $name): void;
 
-  /**
-   * Returns the size of the UI element.
-   *
-   * @return Vector2 The size of the UI element.
-   */
-  public function getSize(): Vector2;
+    /**
+     * Returns the screen position of the UI element.
+     *
+     * @return Vector2 The screen position of the UI element.
+     */
+    public function getPosition(): Vector2;
 
-  /**
-   * Sets the size of the UI element.
-   *
-   * @param Vector2 $size The size of the UI element.
-   */
-  public function setSize(Vector2 $size): void;
+    /**
+     * Sets the screen position of the UI element.
+     *
+     * @param Vector2 $position The screen position of the UI element.
+     */
+    public function setPosition(Vector2 $position): void;
 
-  /**
-   * Finds a UI element by its name.
-   *
-   * @param string $uiElementName The name of the UI element.
-   * @return UIElementInterface|null The UI element if found, null otherwise.
-   */
-  public static function find(string $uiElementName): ?self;
+    /**
+     * Returns the size of the UI element.
+     *
+     * @return Vector2 The size of the UI element.
+     */
+    public function getSize(): Vector2;
 
-  /**
-   * Finds all UI elements by their name.
-   *
-   * @param string $uiElementName The name of the UI element.
-   * @return UIElementInterface[] The UI elements if found, an empty array otherwise.
-   */
-  public static function findAll(string $uiElementName): array;
+    /**
+     * Sets the size of the UI element.
+     *
+     * @param Vector2 $size The size of the UI element.
+     */
+    public function setSize(Vector2 $size): void;
 }

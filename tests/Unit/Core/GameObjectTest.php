@@ -112,6 +112,36 @@ describe('GameObject', function () {
     expect($mockBehaviour2->updateCount)->toEqual(1);
   });
 
+  it('clones independent component instances for prefab-style duplication', function () {
+    $mockBehaviour = $this->gameObject->addComponent(MockBehavior::class);
+
+    $clone = clone $this->gameObject;
+    $cloneBehaviour = $clone->getComponent(MockBehavior::class);
+
+    expect($cloneBehaviour)
+      ->toBeInstanceOf(MockBehavior::class)
+      ->and($cloneBehaviour)->not()->toBe($mockBehaviour)
+      ->and($cloneBehaviour->getGameObject())->toBe($clone)
+      ->and($mockBehaviour->getGameObject())->toBe($this->gameObject);
+
+    $clone->update();
+
+    expect($cloneBehaviour->updateCount)->toEqual(1)
+      ->and($mockBehaviour->updateCount)->toEqual(0);
+  });
+
+  it('preserves the renderer sprite when cloning prefab-style game objects', function () {
+    $texturePath = getcwd() . '/tests/Mocks/Textures/test.texture';
+    $this->gameObject->setSpriteFromTexture(new Texture($texturePath), new Vector2(0, 0), new Vector2(1, 1));
+
+    $clone = clone $this->gameObject;
+
+    expect($clone->getSprite())
+      ->not()->toBeNull()
+      ->and($clone->getSprite()->getRect()->getWidth())->toEqual(1)
+      ->and($clone->getSprite()->getRect()->getHeight())->toEqual(1);
+  });
+
   it('can broadcast a message to all components', function () {
     $mockBehaviour1 = $this->gameObject->addComponent(MockBehavior::class);
     $mockBehaviour2 = $this->gameObject->addComponent(MockBehavior::class);

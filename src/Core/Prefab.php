@@ -5,7 +5,7 @@ namespace Sendama\Engine\Core;
 use Sendama\Engine\Core\Interfaces\GameObjectInterface;
 use Sendama\Engine\Core\Interfaces\PrefabCallbackInterface;
 use Sendama\Engine\Core\Interfaces\PrefabInterface;
-use Sendama\Engine\Exceptions\FileNotFoundException;
+use Sendama\Engine\Core\Scenes\SceneManager;
 
 /**
  * Class Prefab is a class that represents a prefab in the engine.
@@ -84,19 +84,7 @@ class Prefab implements PrefabInterface
    */
   public function load(string $path): void
   {
-    // TODO: Implement load() method.
-    // Check if the file exists
-    if (! file_exists($path)) {
-      throw new FileNotFoundException("The file does not exist: $path");
-    }
-
-    // Load the file
-    $data = require($path);
-
-    // Deserialize the file
-
-
-    // Set the game object
+    $this->gameObject = SceneManager::loadPrefabFromPath($path);
   }
 
   public function __serialize(): array

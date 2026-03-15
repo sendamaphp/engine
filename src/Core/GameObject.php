@@ -3,6 +3,8 @@
 namespace Sendama\Engine\Core;
 
 use InvalidArgumentException;
+use ReflectionObject;
+use Sendama\Engine\Core\Behaviours\Attributes\SerializeField;
 use Sendama\Engine\Core\Interfaces\CanCompare;
 use Sendama\Engine\Core\Interfaces\CanEquate;
 use Sendama\Engine\Core\Interfaces\ComponentInterface;
@@ -236,6 +238,8 @@ class GameObject implements GameObjectInterface
      */
     public function __serialize(): array
     {
+        $sprite = $this->renderer->getSprite();
+
         return [
             "hash" => $this->hash,
             "name" => $this->name,
@@ -245,7 +249,7 @@ class GameObject implements GameObjectInterface
             "scale" => $this->scale,
             "transform" => $this->transform,
             "render" => $this->renderer,
-            "sprite" => $this->sprite,
+            "sprite" => $sprite,
         ];
     }
 
@@ -282,13 +286,115 @@ class GameObject implements GameObjectInterface
     public function __clone(): void
     {
         $this->hash = md5(__CLASS__) . '-' . uniqid($this->name, true);
+        $this->started = false;
+        $this->starting = false;
 
-        $this->transform = clone $this->transform;
-        $this->renderer = clone $this->renderer;
+        $originalComponents = $this->components;
+        $position = clone $this->transform->getPosition();
+        $rotation = clone $this->transform->getRotation();
+        $scale = clone $this->transform->getScale();
+        $parent = $this->transform->getParent();
+        $currentSprite = $this->renderer->getSprite();
+        $sprite = $currentSprite ? clone $currentSprite : null;
 
-        if ($this->sprite) {
-            $this->sprite = clone $this->sprite;
+        $this->position = clone $position;
+        $this->rotation = clone $rotation;
+        $this->scale = clone $scale;
+        $this->sprite = $sprite;
+        $this->transform = new Transform($this, $position, $scale, $rotation, $parent);
+        $this->renderer = new Renderer($this, $sprite);
+        $this->components = [$this->transform, $this->renderer];
+
+        foreach ($originalComponents as $component) {
+            if ($component instanceof Transform || $component instanceof Renderer) {
+                continue;
+            }
+
+            $this->components[] = $this->cloneComponentForInstance($component);
         }
+    }
+
+    /**
+     * Rebuild a component for a cloned game object and copy its serializable state.
+     *
+     * @param ComponentInterface $component
+     * @return ComponentInterface
+     */
+    private function cloneComponentForInstance(ComponentInterface $component): ComponentInterface
+    {
+        $componentClass = $component::class;
+        /** @var ComponentInterface $componentClone */
+        $componentClone = new $componentClass($this);
+        $reflection = new ReflectionObject($componentClone);
+
+        foreach ($this->extractSerializableComponentData($component) as $propertyName => $value) {
+            if (!$reflection->hasProperty($propertyName)) {
+                continue;
+            }
+
+            $property = $reflection->getProperty($propertyName);
+            $property->setValue($componentClone, self::duplicateComponentValue($value));
+        }
+
+        if (!$component->isEnabled()) {
+            $enabledProperty = new \ReflectionProperty(Component::class, 'enabled');
+            $enabledProperty->setValue($componentClone, false);
+        }
+
+        return $componentClone;
+    }
+
+    /**
+     * Read serializable component data while skipping virtual accessors like activeScene/scene.
+     *
+     * @param ComponentInterface $component
+     * @return array<string, mixed>
+     */
+    private function extractSerializableComponentData(ComponentInterface $component): array
+    {
+        $data = [];
+        $reflection = new ReflectionObject($component);
+
+        foreach ($reflection->getProperties() as $property) {
+            $isSerializable = $property->isPublic() || $property->getAttributes(SerializeField::class);
+
+            if (!$isSerializable) {
+                continue;
+            }
+
+            if (method_exists($property, 'isVirtual') && $property->isVirtual()) {
+                continue;
+            }
+
+            $data[$property->getName()] = $property->getValue($component);
+        }
+
+        return $data;
+    }
+
+    /**
+     * Duplicate nested values so prefab instances do not share mutable component state.
+     *
+     * @param mixed $value
+     * @return mixed
+     */
+    private static function duplicateComponentValue(mixed $value): mixed
+    {
+        if (is_array($value)) {
+            $duplicate = [];
+
+            foreach ($value as $key => $item) {
+                $duplicate[$key] = self::duplicateComponentValue($item);
+            }
+
+            return $duplicate;
+        }
+
+        if (is_object($value)) {
+            return clone $value;
+        }
+
+        return $value;
     }
 
     /**
@@ -721,6 +827,7 @@ class GameObject implements GameObjectInterface
      */
     public function setSprite(Sprite $sprite): void
     {
+        $this->sprite = $sprite;
         $this->getRenderer()->setSprite($sprite);
     }
 

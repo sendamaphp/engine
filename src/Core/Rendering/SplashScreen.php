@@ -27,7 +27,10 @@ final class SplashScreen
             // Check if a splash texture can be loaded
             if (!file_exists($this->getSettings('splash_texture'))) {
                 Debug::warn("Splash screen texture not found: {$this->settings[SettingsKey::SPLASH_TEXTURE->value]}");
-                $this->settings[SettingsKey::SPLASH_TEXTURE->value] = Path::join(Path::getVendorAssetsDirectory(), DEFAULT_SPLASH_TEXTURE_PATH);
+                $this->settings[SettingsKey::SPLASH_TEXTURE->value] = Path::join(
+                    Path::getVendorAssetsDirectory(),
+                    basename(DEFAULT_SPLASH_TEXTURE_PATH)
+                );
             }
 
             Debug::info("Loading splash screen texture");

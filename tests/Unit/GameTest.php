@@ -62,6 +62,32 @@ it('falls back to configured log level when env is absent', function () {
   ], 'info'))->toBe('warn');
 });
 
+it('builds tmux-safe session names from the configured game title', function () {
+  expect(invokePrivateStaticMethod(Game::class, 'buildTmuxSessionName', 'The Collector'))->toBe('The-Collector')
+    ->and(invokePrivateStaticMethod(Game::class, 'buildTmuxSessionName', '  !!!  '))->toBe('sendama-game');
+});
+
+it('builds a managed tmux relaunch command for the current php entrypoint', function () {
+  $command = invokePrivateStaticMethod(
+    Game::class,
+    'buildTmuxRuntimeCommand',
+    'The-Collector',
+    ['/tmp/game.php', '--scene=level01', 'Arcade Mode']
+  );
+
+  expect($command)->toContain('SENDAMA_TMUX_CHILD=1')
+    ->toContain("SENDAMA_TMUX_SESSION='The-Collector'")
+    ->toContain(escapeshellarg(PHP_BINARY))
+    ->toContain("'/tmp/game.php'")
+    ->toContain("'--scene=level01'")
+    ->toContain("'Arcade Mode'");
+});
+
+it('only uses the tmux handoff when the current command can be relaunched', function () {
+  expect(invokePrivateStaticMethod(Game::class, 'canRelaunchCurrentCommand', []))->toBeFalse()
+    ->and(invokePrivateStaticMethod(Game::class, 'canRelaunchCurrentCommand', ['/tmp/game.php']))->toBe(PHP_SAPI === 'cli');
+});
+
 function invokePrivateStaticMethod(string $className, string $methodName, mixed ...$args): mixed
 {
   $reflection = new \ReflectionClass($className);
