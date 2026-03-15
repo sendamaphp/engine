@@ -53,6 +53,8 @@ use Throwable;
 class Game implements ObservableInterface
 {
     const int DEBUG_WINDOW_HEIGHT = 5;
+    private const string TMUX_CHILD_ENV_KEY = 'SENDAMA_TMUX_CHILD';
+    private const string TMUX_SESSION_ENV_KEY = 'SENDAMA_TMUX_SESSION';
     /**
      * @var SceneState $sceneState
      */
@@ -116,7 +118,7 @@ class Game implements ObservableInterface
     /**
      * @var Cursor $consoleCursor
      */
-    private Cursor $consoleCursor;
+    private ?Cursor $consoleCursor = null;
     /**
      * @var Window $debugWindow
      */
@@ -134,7 +136,8 @@ class Game implements ObservableInterface
      */
     private GameStateInterface $state;
 
-    private SplashScreen $splashScreen;
+    private ?SplashScreen $splashScreen = null;
+    private bool $consoleInitialized = false;
 
     /**
      * Game constructor.
@@ -149,13 +152,11 @@ class Game implements ObservableInterface
         try {
             $this->initializeObservers();
             $this->configureErrorAndExceptionHandlers();
-            $this->initializeConsole();
             $this->initializeConfigStore();
             $this->initializeManagers();
             $this->initializeSettings();
             $this->initializeGameStates();
             $this->configureWindowChangeSignalHandler();
-            $this->splashScreen = new SplashScreen($this->consoleCursor, $this->settings);
         } catch (Error|Throwable $exception) {
             $this->handleException($exception);
         }
@@ -219,21 +220,23 @@ class Game implements ObservableInterface
      */
     public function stop(): void
     {
-        Console::reset();
-
         Debug::info("Stopping game");
 
-        // Disable non-blocking input mode
-        InputManager::disableNonBlockingMode();
+        if ($this->consoleInitialized) {
+            Console::reset();
 
-        // Enable echo
-        InputManager::enableEcho();
+            // Disable non-blocking input mode
+            InputManager::disableNonBlockingMode();
 
-        // Show cursor
-        $this->consoleCursor->show();
+            // Enable echo
+            InputManager::enableEcho();
 
-        // Restore the terminal settings
-        Console::restoreSettings();
+            // Show cursor
+            $this->consoleCursor?->show();
+
+            // Restore the terminal settings
+            Console::restoreSettings();
+        }
 
         // Remove observers
         $this->removeObservers();
@@ -336,10 +339,16 @@ class Game implements ObservableInterface
     /**
      * @return void
      */
-    protected function initializeConsole(): void
+    protected function initializeConsole(bool $clearOnInit = true): void
     {
         $this->consoleCursor = Console::cursor();
-        Console::init($this, []);
+        Console::init($this, [
+            'width' => $this->getLogicalScreenWidth(),
+            'height' => $this->getLogicalScreenHeight(),
+            'clear_on_init' => $clearOnInit,
+        ]);
+        $this->splashScreen = new SplashScreen($this->consoleCursor, $this->settings);
+        $this->consoleInitialized = true;
     }
 
     /**
@@ -391,7 +400,7 @@ class Game implements ObservableInterface
             $this->screenHeight
         );
         $this->settings[SettingsKey::FPS->value] = DEFAULT_FPS;
-        $this->settings[SettingsKey::ASSETS_DIR->value] = Path::join(getcwd(), DEFAULT_ASSETS_PATH);
+        $this->settings[SettingsKey::ASSETS_DIR->value] = Path::getWorkingDirectoryAssetsPath();
 
         $this->settings[SettingsKey::INITIAL_SCENE->value] = null;
 
@@ -497,7 +506,8 @@ class Game implements ObservableInterface
                 $this->screenHeight
             );
             $this->settings[SettingsKey::FPS->value] = $settings[SettingsKey::FPS->value] ?? DEFAULT_FPS;
-            $this->settings[SettingsKey::ASSETS_DIR->value] = $settings[SettingsKey::ASSETS_DIR->value] ?? getcwd() . DEFAULT_ASSETS_PATH;
+            $this->settings[SettingsKey::ASSETS_DIR->value] = $settings[SettingsKey::ASSETS_DIR->value]
+                ?? Path::getWorkingDirectoryAssetsPath();
 
             Debug::info('Loading scene settings');
             // Scene
@@ -575,7 +585,9 @@ class Game implements ObservableInterface
      */
     public function __destruct()
     {
-        Console::restoreSettings();
+        if ($this->consoleInitialized) {
+            Console::restoreSettings();
+        }
 
         if ($lastError = error_get_last()) {
             $this->handleError($lastError['type'], $lastError['message'], $lastError['file'], $lastError['line']);
@@ -591,6 +603,11 @@ class Game implements ObservableInterface
     public function run(): void
     {
         try {
+            if ($this->handoffToTmuxSessionIfAvailable()) {
+                return;
+            }
+
+            $this->initializeConsole(clearOnInit: !$this->isTmuxChildProcess());
             $sleepTime = (int)(1000000 / $this->getSettings('fps'));
             $this->start();
             $nextFrameTime = microtime(true) + 1;
@@ -629,6 +646,14 @@ class Game implements ObservableInterface
     private function start(): void
     {
         Debug::info("Starting game");
+
+        if (!$this->consoleInitialized) {
+            $this->initializeConsole(clearOnInit: !$this->isTmuxChildProcess());
+        }
+
+        if (!$this->consoleCursor instanceof Cursor || !$this->splashScreen instanceof SplashScreen) {
+            throw new InitializationException('Console runtime was not initialized.');
+        }
 
         // Save the terminal settings
         Console::saveSettings();
@@ -918,6 +943,160 @@ class Game implements ObservableInterface
             'integer' => $value === 1,
             default => false
         };
+    }
+
+    /**
+     * Hands off the game runtime to a dedicated tmux session when supported.
+     *
+     * @return bool True when control was transferred and the current process should return.
+     */
+    private function handoffToTmuxSessionIfAvailable(): bool
+    {
+        if (
+            $this->isTmuxChildProcess()
+            || !self::isTmuxInstalled()
+            || !self::canRelaunchCurrentCommand($_SERVER['argv'] ?? null)
+        ) {
+            return false;
+        }
+
+        $sessionName = self::buildTmuxSessionName((string)$this->getSettings(SettingsKey::GAME_NAME->value));
+        $workingDirectory = getcwd() ?: $this->workingDirectory ?? '.';
+        $command = self::buildTmuxRuntimeCommand($sessionName, $_SERVER['argv'] ?? []);
+
+        if (self::tmuxSessionExists($sessionName)) {
+            self::destroyTmuxSession($sessionName);
+        }
+
+        $createExitCode = 0;
+        exec(
+            sprintf(
+                'tmux new-session -d -s %s -c %s %s',
+                escapeshellarg($sessionName),
+                escapeshellarg($workingDirectory),
+                escapeshellarg($command),
+            ),
+            result_code: $createExitCode,
+        );
+
+        if ($createExitCode !== 0) {
+            return false;
+        }
+
+        $attachCommand = getenv('TMUX')
+            ? sprintf('tmux switch-client -t %s', escapeshellarg($sessionName))
+            : sprintf('tmux attach-session -t %s', escapeshellarg($sessionName));
+
+        passthru($attachCommand, $attachExitCode);
+
+        if ($attachExitCode !== 0) {
+            self::destroyTmuxSession($sessionName);
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Determine whether this process is already running inside a Sendama-managed tmux session.
+     *
+     * @return bool
+     */
+    private function isTmuxChildProcess(): bool
+    {
+        $envValue = $_ENV[self::TMUX_CHILD_ENV_KEY]
+            ?? getenv(self::TMUX_CHILD_ENV_KEY)
+            ?? false;
+
+        return self::isTruthySetting($envValue);
+    }
+
+    /**
+     * Checks whether tmux is available in the executing environment.
+     *
+     * @return bool
+     */
+    private static function isTmuxInstalled(): bool
+    {
+        $tmuxPath = shell_exec('command -v tmux 2>/dev/null');
+
+        return is_string($tmuxPath) && trim($tmuxPath) !== '';
+    }
+
+    /**
+     * Determine whether the current runtime command can be relaunched safely.
+     *
+     * @param mixed $argv
+     * @return bool
+     */
+    private static function canRelaunchCurrentCommand(mixed $argv): bool
+    {
+        return PHP_SAPI === 'cli' && is_array($argv) && $argv !== [];
+    }
+
+    /**
+     * Builds a tmux-safe session name from the configured game title.
+     *
+     * @param string $gameName
+     * @return string
+     */
+    private static function buildTmuxSessionName(string $gameName): string
+    {
+        $sanitizedName = preg_replace('/[^A-Za-z0-9_-]+/', '-', trim($gameName)) ?? '';
+        $sanitizedName = trim($sanitizedName, '-_');
+
+        return $sanitizedName !== '' ? $sanitizedName : 'sendama-game';
+    }
+
+    /**
+     * Reconstructs the current PHP command line for tmux handoff.
+     *
+     * @param string $sessionName
+     * @param array<int, string> $argv
+     * @return string
+     */
+    private static function buildTmuxRuntimeCommand(string $sessionName, array $argv): string
+    {
+        $commandParts = array_merge(
+            [
+                self::TMUX_CHILD_ENV_KEY . '=1',
+                self::TMUX_SESSION_ENV_KEY . '=' . escapeshellarg($sessionName),
+                escapeshellarg(PHP_BINARY),
+            ],
+            array_map(
+                static fn(mixed $argument): string => escapeshellarg((string)$argument),
+                $argv,
+            ),
+        );
+
+        return implode(' ', $commandParts);
+    }
+
+    /**
+     * Checks whether a tmux session already exists.
+     *
+     * @param string $sessionName
+     * @return bool
+     */
+    private static function tmuxSessionExists(string $sessionName): bool
+    {
+        exec(
+            sprintf('tmux has-session -t %s 2>/dev/null', escapeshellarg($sessionName)),
+            result_code: $exitCode,
+        );
+
+        return $exitCode === 0;
+    }
+
+    /**
+     * Destroys an existing tmux session.
+     *
+     * @param string $sessionName
+     * @return void
+     */
+    private static function destroyTmuxSession(string $sessionName): void
+    {
+        exec(sprintf('tmux kill-session -t %s 2>/dev/null', escapeshellarg($sessionName)));
     }
 
     /**

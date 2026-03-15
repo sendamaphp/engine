@@ -122,7 +122,33 @@ final class Path
    */
   public static function getWorkingDirectoryAssetsPath(): string
   {
-    return self::join(getcwd() ?: '', 'Assets');
+    $baseDirectory = self::$workingDirectory !== ''
+      ? self::$workingDirectory
+      : (getcwd() ?: '');
+
+    return self::resolveAssetsDirectory($baseDirectory);
+  }
+
+  /**
+   * Resolve a project assets directory while supporting both legacy `Assets`
+   * and newer `assets` layouts.
+   *
+   * @param string $baseDirectory
+   * @return string
+   */
+  public static function resolveAssetsDirectory(string $baseDirectory): string
+  {
+    $baseDirectory = self::normalize($baseDirectory);
+
+    foreach (['assets', 'Assets'] as $candidateName) {
+      $candidate = self::join($baseDirectory, $candidateName);
+
+      if (is_dir($candidate)) {
+        return $candidate;
+      }
+    }
+
+    return self::join($baseDirectory, DEFAULT_ASSETS_PATH);
   }
 
   /**

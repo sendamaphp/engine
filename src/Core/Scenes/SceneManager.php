@@ -68,6 +68,7 @@ final class SceneManager implements SingletonInterface, CanStart, CanResume, Can
      */
     protected EventManager $eventManager;
     protected Physics $physics;
+    protected static ?string $metadataAssetsRoot = null;
 
     /**
      * Constructs a SceneManager
@@ -383,6 +384,7 @@ final class SceneManager implements SingletonInterface, CanStart, CanResume, Can
 
         $sceneMetadata = require($filename);
         $sceneMetadata = json_decode(json_encode($sceneMetadata, JSON_UNESCAPED_SLASHES), false);
+        self::$metadataAssetsRoot = Path::normalize(dirname($filename, 2));
 
         $sceneName = $sceneMetadata->name ?? basename($path);
 
@@ -576,11 +578,17 @@ final class SceneManager implements SingletonInterface, CanStart, CanResume, Can
         }
 
         $candidates = [$path];
+        if (is_string(self::$metadataAssetsRoot) && self::$metadataAssetsRoot !== '') {
+            $candidates[] = Path::join(self::$metadataAssetsRoot, $path);
+        }
         $assetsRelativePath = Path::join(Path::getWorkingDirectoryAssetsPath(), $path);
         $candidates[] = $assetsRelativePath;
 
         if (!str_ends_with(strtolower($path), '.prefab.php')) {
             $candidates[] = $path . '.prefab.php';
+            if (is_string(self::$metadataAssetsRoot) && self::$metadataAssetsRoot !== '') {
+                $candidates[] = Path::join(self::$metadataAssetsRoot, $path . '.prefab.php');
+            }
             $candidates[] = $assetsRelativePath . '.prefab.php';
         }
 

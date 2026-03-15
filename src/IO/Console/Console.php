@@ -90,13 +90,18 @@ class Console
   public static function init(Game $game, array $options = [
     'width' => DEFAULT_SCREEN_WIDTH,
     'height' => DEFAULT_SCREEN_HEIGHT,
+    'clear_on_init' => true,
   ]): void
   {
     self::$game = $game;
     self::$logicalWidth = $options['width'] ?? DEFAULT_SCREEN_WIDTH;
     self::$logicalHeight = $options['height'] ?? DEFAULT_SCREEN_HEIGHT;
     self::refreshLayout(self::$logicalWidth, self::$logicalHeight, clearWhenChanged: false);
-    self::clear();
+    if (($options['clear_on_init'] ?? true) === true) {
+      self::clear();
+    } else {
+      self::$buffer = self::getEmptyBuffer();
+    }
     Console::cursor()->disableBlinking();
     self::$output = new ConsoleOutput();
   }
