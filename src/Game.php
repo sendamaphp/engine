@@ -970,12 +970,7 @@ class Game implements ObservableInterface
 
         $createExitCode = 0;
         exec(
-            sprintf(
-                'tmux new-session -d -s %s -c %s %s',
-                escapeshellarg($sessionName),
-                escapeshellarg($workingDirectory),
-                escapeshellarg($command),
-            ),
+            self::buildTmuxSessionLaunchCommand($sessionName, $workingDirectory, $command, $this->isDebug()),
             result_code: $createExitCode,
         );
 
@@ -1070,6 +1065,40 @@ class Game implements ObservableInterface
         );
 
         return implode(' ', $commandParts);
+    }
+
+    /**
+     * Builds the tmux bootstrap command used to create the managed runtime session.
+     *
+     * Non-debug runs disable the tmux status bar so the game gets the full terminal height.
+     *
+     * @param string $sessionName
+     * @param string $workingDirectory
+     * @param string $command
+     * @param bool $debugMode
+     * @return string
+     */
+    private static function buildTmuxSessionLaunchCommand(
+        string $sessionName,
+        string $workingDirectory,
+        string $command,
+        bool $debugMode,
+    ): string {
+        $bootstrapCommand = sprintf(
+            'tmux new-session -d -s %s -c %s %s',
+            escapeshellarg($sessionName),
+            escapeshellarg($workingDirectory),
+            escapeshellarg($command),
+        );
+
+        if ($debugMode) {
+            return $bootstrapCommand;
+        }
+
+        return $bootstrapCommand . sprintf(
+            ' \; set-option -t %s status off',
+            escapeshellarg($sessionName),
+        );
     }
 
     /**

@@ -27,11 +27,13 @@ use Sendama\Engine\Exceptions\IncorrectComponentTypeException;
 use Sendama\Engine\Exceptions\Scenes\SceneManagementException;
 use Sendama\Engine\Exceptions\Scenes\SceneNotFoundException;
 use Sendama\Engine\IO\Console\Console;
+use Sendama\Engine\IO\Enumerations\Color as EngineColor;
 use Sendama\Engine\Physics\Collider;
 use Sendama\Engine\Physics\PhysicsMaterial;
 use Sendama\Engine\Physics\Rigidbody;
 use Sendama\Engine\Physics\Interfaces\ColliderInterface;
 use Sendama\Engine\Physics\Physics;
+use Sendama\Engine\UI\GUITexture\GUITexture;
 use Sendama\Engine\UI\Label\Label;
 use Sendama\Engine\UI\Text\Text;
 use Sendama\Engine\Util\Path;
@@ -102,6 +104,34 @@ final class SceneManager implements SingletonInterface, CanStart, CanResume, Can
     public function getActiveScene(): ?SceneInterface
     {
         return $this->activeSceneNode?->getScene();
+    }
+
+    /**
+     * Checks whether a scene exists at the given index or name.
+     *
+     * @param int|string $index
+     * @return bool
+     */
+    public function hasScene(int|string $index): bool
+    {
+        $sceneList = $this->scenes->toArray();
+
+        Debug::log(var_export([
+            "index" => $index,
+            "total" => $this->scenes->count(),
+            "scenes" => array_map(fn(SceneInterface $scene) => $scene->getName(), $sceneList)
+        ], true));
+        foreach ($sceneList as $i => $scene) {
+            if (is_int($index) && $i === $index) {
+                return true;
+            }
+
+            if (is_string($index) && $scene->getName() === $index) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -445,8 +475,16 @@ final class SceneManager implements SingletonInterface, CanStart, CanResume, Can
                             default:
                                 $gameObject = match($item->type) {
                                     Label::class => new Label($this, $itemName, $position, $size),
-                                    Text::class => new Text($this, $itemName, $position, $size)
+                                    Text::class => new Text($this, $itemName, $position, $size),
+                                    GUITexture::class => new GUITexture($this, $itemName, $position, $size),
+                                    default => throw new SceneManagementException(
+                                        "Unsupported scene hierarchy item type: {$item->type}"
+                                    ),
                                 };
+
+                                if (isset($item->tag) && method_exists($gameObject, 'setTag')) {
+                                    $gameObject->setTag((string)$item->tag);
+                                }
 
                                 if (isset($item->text)) {
                                     if (!method_exists($gameObject, 'setText')) {
@@ -454,6 +492,15 @@ final class SceneManager implements SingletonInterface, CanStart, CanResume, Can
                                     }
 
                                     $gameObject->setText($item->text);
+                                }
+
+                                if ($gameObject instanceof GUITexture) {
+                                    $gameObject->setTexturePath(
+                                        SceneManager::extractTexturePathFromMetadata($item->texture ?? null) ?? ''
+                                    );
+                                    $gameObject->setColor(
+                                        SceneManager::resolveColorMetadataValue($item->color ?? null) ?? EngineColor::WHITE
+                                    );
                                 }
                         }
 
@@ -528,6 +575,13 @@ final class SceneManager implements SingletonInterface, CanStart, CanResume, Can
                 $componentClass = $componentMetadataObject->class;
                 $component = $gameObject->addComponent($componentClass);
                 self::applySceneComponentMetadata($component, $componentClass, $componentMetadataObject);
+            }
+        }
+
+        if (isset($item->children) && is_iterable($item->children)) {
+            foreach ($item->children as $childMetadata) {
+                $child = self::inflateGameObjectMetadata($childMetadata);
+                $child->getTransform()->setParent($gameObject->getTransform());
             }
         }
 
@@ -617,6 +671,74 @@ final class SceneManager implements SingletonInterface, CanStart, CanResume, Can
     }
 
     /**
+     * Extracts a UI texture path from scene metadata.
+     *
+     * @param mixed $textureMetadata
+     * @return string|null
+     */
+    public static function extractTexturePathFromMetadata(mixed $textureMetadata): ?string
+    {
+        if (is_string($textureMetadata)) {
+            $texturePath = trim($textureMetadata);
+
+            return $texturePath !== '' ? $texturePath : null;
+        }
+
+        if (is_array($textureMetadata)) {
+            $texturePath = $textureMetadata['path'] ?? null;
+
+            return is_string($texturePath) && trim($texturePath) !== ''
+                ? trim($texturePath)
+                : null;
+        }
+
+        if (is_object($textureMetadata)) {
+            $texturePath = $textureMetadata->path ?? null;
+
+            return is_string($texturePath) && trim($texturePath) !== ''
+                ? trim($texturePath)
+                : null;
+        }
+
+        return null;
+    }
+
+    /**
+     * Resolves scene metadata into a runtime console color.
+     *
+     * @param mixed $colorMetadata
+     * @return EngineColor|null
+     */
+    public static function resolveColorMetadataValue(mixed $colorMetadata): ?EngineColor
+    {
+        if ($colorMetadata instanceof EngineColor) {
+            return $colorMetadata;
+        }
+
+        if (!is_string($colorMetadata) || trim($colorMetadata) === '') {
+            return null;
+        }
+
+        $normalizedColor = strtoupper(str_replace([' ', '-'], '_', trim($colorMetadata)));
+
+        foreach (EngineColor::cases() as $color) {
+            $normalizedCaseName = strtoupper($color->name);
+            $normalizedPhoneticName = strtoupper(str_replace([' ', '-'], '_', $color->getPhoneticName()));
+            $normalizedEscapeValue = strtoupper(trim($color->value));
+
+            if (
+                $normalizedColor === $normalizedCaseName
+                || $normalizedColor === $normalizedPhoneticName
+                || $normalizedColor === $normalizedEscapeValue
+            ) {
+                return $color;
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Applies editor/file-scene component metadata onto the instantiated component.
      *
      * Supports legacy `proerties`, current `properties`, and editor-authored `data` payloads.
@@ -680,7 +802,135 @@ final class SceneManager implements SingletonInterface, CanStart, CanResume, Can
             return self::loadPrefabFromPath($value);
         }
 
+        if (self::propertyAcceptsClass($property, Vector2::class)) {
+            return self::hydrateVector2PropertyValue($property, $value);
+        }
+
         return $value;
+    }
+
+    /**
+     * Hydrates scene metadata into a Vector2-compatible runtime value.
+     *
+     * @param ReflectionProperty $property
+     * @param mixed $value
+     * @return Vector2|null
+     */
+    private static function hydrateVector2PropertyValue(ReflectionProperty $property, mixed $value): ?Vector2
+    {
+        if ($value instanceof Vector2) {
+            return Vector2::getClone($value);
+        }
+
+        if ($value === null) {
+            return null;
+        }
+
+        $vectorPayload = self::extractVector2MetadataPayload($value);
+
+        if (is_array($vectorPayload)) {
+            return Vector2::fromArray($vectorPayload);
+        }
+
+        Debug::warn(sprintf(
+            "Unable to hydrate Vector2 property '%s::%s' from scene metadata; falling back to %s.",
+            $property->getDeclaringClass()->getName(),
+            $property->getName(),
+            self::propertyAllowsNull($property) ? 'null' : 'Vector2::zero()'
+        ));
+
+        return self::propertyAllowsNull($property) ? null : Vector2::zero();
+    }
+
+    /**
+     * Attempts to normalize serialized vector metadata from arrays, objects, or legacy strings.
+     *
+     * @param mixed $value
+     * @return array{x: int, y: int}|null
+     */
+    private static function extractVector2MetadataPayload(mixed $value): ?array
+    {
+        if ($value instanceof Vector2) {
+            return [
+                'x' => $value->getX(),
+                'y' => $value->getY(),
+            ];
+        }
+
+        if (is_array($value)) {
+            if (array_is_list($value)) {
+                return [
+                    'x' => (int)($value[0] ?? 0),
+                    'y' => (int)($value[1] ?? 0),
+                ];
+            }
+
+            if (array_key_exists('x', $value) || array_key_exists('y', $value)) {
+                return [
+                    'x' => (int)($value['x'] ?? 0),
+                    'y' => (int)($value['y'] ?? 0),
+                ];
+            }
+
+            return null;
+        }
+
+        if (is_object($value)) {
+            return self::extractVector2MetadataPayload((array)$value);
+        }
+
+        if (!is_string($value)) {
+            return null;
+        }
+
+        $normalizedValue = trim($value);
+
+        if ($normalizedValue === '') {
+            return null;
+        }
+
+        $decodedValue = json_decode($normalizedValue, true);
+
+        if (is_array($decodedValue)) {
+            return self::extractVector2MetadataPayload($decodedValue);
+        }
+
+        if (
+            preg_match('/^\[\s*(-?\d+)\s*,\s*(-?\d+)\s*\]$/', $normalizedValue, $matches) === 1
+            || preg_match('/^\s*(-?\d+)\s*,\s*(-?\d+)\s*$/', $normalizedValue, $matches) === 1
+        ) {
+            return [
+                'x' => (int)$matches[1],
+                'y' => (int)$matches[2],
+            ];
+        }
+
+        return null;
+    }
+
+    /**
+     * Determines whether a typed property explicitly allows null values.
+     *
+     * @param ReflectionProperty $property
+     * @return bool
+     */
+    private static function propertyAllowsNull(ReflectionProperty $property): bool
+    {
+        $type = $property->getType();
+
+        if ($type instanceof ReflectionNamedType) {
+            return $type->allowsNull();
+        }
+
+        if ($type instanceof ReflectionUnionType) {
+            foreach ($type->getTypes() as $namedType) {
+                if ($namedType instanceof ReflectionNamedType && $namedType->getName() === 'null') {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     /**

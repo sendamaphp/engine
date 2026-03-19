@@ -14,6 +14,21 @@ use Stringable;
 interface MenuItemInterface extends Stringable, ExecutableInterface
 {
   /**
+   * Checks whether the menu item can currently be selected.
+   *
+   * @return bool
+   */
+  public function isEnabled(): bool;
+
+  /**
+   * Enables or disables the menu item.
+   *
+   * @param bool $enabled
+   * @return void
+   */
+  public function setEnabled(bool $enabled): void;
+
+  /**
    * Returns the label of the menu item.
    *
    * @return string The label of the menu item.

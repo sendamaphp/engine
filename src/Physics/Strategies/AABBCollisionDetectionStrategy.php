@@ -29,8 +29,8 @@ class AABBCollisionDetectionStrategy extends AbstractCollisionDetectionStrategy
     if ($this->collider->getBoundingBox()->overlaps($collider->getBoundingBox()))
     {
       Debug::log(__CLASS__ . ' detected a collision between ' . $this->collider->getGameObject()->getName() . ' and ' . $collider->getGameObject()->getName() . '.');
-      Debug::log($this->collider->getGameObject()->getName() . ' is at ' . $this->collider->getTransform()->getPosition());
-      Debug::log($collider->getGameObject()->getName() . ' is at ' . $collider->getTransform()->getPosition());
+      Debug::log($this->collider->getGameObject()->getName() . ' is at ' . $this->collider->getTransform()->getWorldPosition());
+      Debug::log($collider->getGameObject()->getName() . ' is at ' . $collider->getTransform()->getWorldPosition());
       return true;
     }
 

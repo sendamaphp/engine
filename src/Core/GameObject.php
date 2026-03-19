@@ -150,8 +150,17 @@ class GameObject implements GameObjectInterface
     {
         if ($activeScene = SceneManager::getInstance()->getActiveScene()) {
             foreach ($activeScene->getRootGameObjects() as $gameObject) {
-                if ($gameObject->getName() === $gameObjectName) {
-                    return $gameObject;
+                if (!$gameObject instanceof GameObject) {
+                    continue;
+                }
+
+                $match = self::findFirstInHierarchy(
+                    $gameObject,
+                    static fn (GameObject $candidate): bool => $candidate->getName() === $gameObjectName
+                );
+
+                if ($match !== null) {
+                    return $match;
                 }
             }
         }
@@ -176,8 +185,17 @@ class GameObject implements GameObjectInterface
     {
         if ($activeScene = SceneManager::getInstance()->getActiveScene()) {
             foreach ($activeScene->getRootGameObjects() as $gameObject) {
-                if ($gameObject->getTag() === $gameObjectTag) {
-                    return $gameObject;
+                if (!$gameObject instanceof GameObject) {
+                    continue;
+                }
+
+                $match = self::findFirstInHierarchy(
+                    $gameObject,
+                    static fn (GameObject $candidate): bool => $candidate->getTag() === $gameObjectTag
+                );
+
+                if ($match !== null) {
+                    return $match;
                 }
             }
         }
@@ -204,9 +222,15 @@ class GameObject implements GameObjectInterface
 
         if ($activeScene = SceneManager::getInstance()->getActiveScene()) {
             foreach ($activeScene->getRootGameObjects() as $gameObject) {
-                if ($gameObject->getName() === $gameObjectName) {
-                    $gameObjects[] = $gameObject;
+                if (!$gameObject instanceof GameObject) {
+                    continue;
                 }
+
+                self::collectHierarchyMatches(
+                    $gameObject,
+                    static fn (GameObject $candidate): bool => $candidate->getName() === $gameObjectName,
+                    $gameObjects
+                );
             }
         }
 
@@ -222,9 +246,15 @@ class GameObject implements GameObjectInterface
 
         if ($activeScene = SceneManager::getInstance()->getActiveScene()) {
             foreach ($activeScene->getRootGameObjects() as $gameObject) {
-                if ($gameObject->getTag() === $gameObjectTag) {
-                    $gameObjects[] = $gameObject;
+                if (!$gameObject instanceof GameObject) {
+                    continue;
                 }
+
+                self::collectHierarchyMatches(
+                    $gameObject,
+                    static fn (GameObject $candidate): bool => $candidate->getTag() === $gameObjectTag,
+                    $gameObjects
+                );
             }
         }
 
@@ -290,6 +320,7 @@ class GameObject implements GameObjectInterface
         $this->starting = false;
 
         $originalComponents = $this->components;
+        $originalChildren = $this->getChildren();
         $position = clone $this->transform->getPosition();
         $rotation = clone $this->transform->getRotation();
         $scale = clone $this->transform->getScale();
@@ -311,6 +342,11 @@ class GameObject implements GameObjectInterface
             }
 
             $this->components[] = $this->cloneComponentForInstance($component);
+        }
+
+        foreach ($originalChildren as $child) {
+            $childClone = clone $child;
+            $childClone->getTransform()->setParent($this->transform);
         }
     }
 
@@ -408,6 +444,21 @@ class GameObject implements GameObjectInterface
     }
 
     /**
+     * Returns the direct child game objects parented to this object.
+     *
+     * @return array<GameObject>
+     */
+    public function getChildren(): array
+    {
+        return array_values(
+            array_map(
+                static fn (Transform $childTransform): GameObject => $childTransform->getGameObject(),
+                $this->transform->getChildren()
+            )
+        );
+    }
+
+    /**
      * @inheritDoc
      */
     public function greaterThan(CanCompare $other): bool
@@ -480,8 +531,16 @@ class GameObject implements GameObjectInterface
      */
     public function renderAt(?int $x = null, ?int $y = null): void
     {
-        if ($this->isActive() && $this->renderer->isEnabled()) {
+        if (!$this->isActive()) {
+            return;
+        }
+
+        if ($this->renderer->isEnabled()) {
             $this->renderer->renderAt($x, $y);
+        }
+
+        foreach ($this->getChildren() as $child) {
+            $child->renderAt($x, $y);
         }
     }
 
@@ -498,7 +557,13 @@ class GameObject implements GameObjectInterface
      */
     public function eraseAt(?int $x = null, ?int $y = null): void
     {
-        if ($this->isActive() && $this->renderer->isEnabled()) {
+        $children = array_reverse($this->getChildren());
+
+        foreach ($children as $child) {
+            $child->eraseAt($x, $y);
+        }
+
+        if ($this->renderer->isEnabled()) {
             $this->renderer->eraseAt($x, $y);
         }
     }
@@ -514,6 +579,10 @@ class GameObject implements GameObjectInterface
                     $component->resume();
                 }
             }
+
+            foreach ($this->getChildren() as $child) {
+                $child->resume();
+            }
         }
     }
 
@@ -523,6 +592,10 @@ class GameObject implements GameObjectInterface
     public function suspend(): void
     {
         if ($this->isActive()) {
+            foreach ($this->getChildren() as $child) {
+                $child->suspend();
+            }
+
             foreach ($this->components as $component) {
                 if ($component->isEnabled()) {
                     $component->suspend();
@@ -554,6 +627,10 @@ class GameObject implements GameObjectInterface
             }
         }
 
+        foreach ($this->getChildren() as $child) {
+            $child->start();
+        }
+
         $this->starting = false;
         $this->started = true;
     }
@@ -563,6 +640,10 @@ class GameObject implements GameObjectInterface
      */
     public function stop(): void
     {
+        foreach ($this->getChildren() as $child) {
+            $child->stop();
+        }
+
         if ($this->isActive()) {
             foreach ($this->components as $component) {
                 if ($component->isEnabled()) {
@@ -583,6 +664,10 @@ class GameObject implements GameObjectInterface
                     $component->fixedUpdate();
                 }
             }
+
+            foreach ($this->getChildren() as $child) {
+                $child->fixedUpdate();
+            }
         }
     }
 
@@ -596,6 +681,10 @@ class GameObject implements GameObjectInterface
                 if ($component->isEnabled()) {
                     $component->update();
                 }
+            }
+
+            foreach ($this->getChildren() as $child) {
+                $child->update();
             }
         }
     }
@@ -622,8 +711,16 @@ class GameObject implements GameObjectInterface
      */
     public function render(): void
     {
-        if ($this->isActive() && $this->renderer->isEnabled()) {
+        if (!$this->isActive()) {
+            return;
+        }
+
+        if ($this->renderer->isEnabled()) {
             $this->renderer->render();
+        }
+
+        foreach ($this->getChildren() as $child) {
+            $child->render();
         }
     }
 
@@ -646,8 +743,8 @@ class GameObject implements GameObjectInterface
             $this->suspend();
         }
 
+        $this->erase();
         $this->active = false;
-        $this->getRenderer()->erase();
     }
 
     /**
@@ -655,9 +752,7 @@ class GameObject implements GameObjectInterface
      */
     public function erase(): void
     {
-        if ($this->isActive() && $this->renderer->isEnabled()) {
-            $this->renderer->erase();
-        }
+        $this->eraseAt();
     }
 
     /**
@@ -669,10 +764,16 @@ class GameObject implements GameObjectInterface
      */
     public function broadcast(string $methodName, array $args = []): void
     {
+        $arguments = array_is_list($args) ? $args : array_values($args);
+
         foreach ($this->components as $component) {
             if (method_exists($component, $methodName)) {
-                $component->$methodName(...$args);
+                $component->$methodName(...$arguments);
             }
+        }
+
+        foreach ($this->getChildren() as $child) {
+            $child->broadcast($methodName, $arguments);
         }
     }
 
@@ -726,7 +827,78 @@ class GameObject implements GameObjectInterface
             return false;
         }
 
-        return in_array($this, $activeScene->getRootGameObjects(), true);
+        foreach ($activeScene->getRootGameObjects() as $gameObject) {
+            if ($gameObject instanceof GameObject && self::hierarchyContains($gameObject, $this)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Finds the first matching game object within a hierarchy branch.
+     *
+     * @param GameObject $gameObject
+     * @param callable(GameObject): bool $predicate
+     * @return GameObject|null
+     */
+    private static function findFirstInHierarchy(GameObject $gameObject, callable $predicate): ?GameObject
+    {
+        if ($predicate($gameObject)) {
+            return $gameObject;
+        }
+
+        foreach ($gameObject->getChildren() as $child) {
+            $match = self::findFirstInHierarchy($child, $predicate);
+
+            if ($match !== null) {
+                return $match;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Collects every matching game object within a hierarchy branch.
+     *
+     * @param GameObject $gameObject
+     * @param callable(GameObject): bool $predicate
+     * @param array<GameObject> $matches
+     * @return void
+     */
+    private static function collectHierarchyMatches(GameObject $gameObject, callable $predicate, array &$matches): void
+    {
+        if ($predicate($gameObject)) {
+            $matches[] = $gameObject;
+        }
+
+        foreach ($gameObject->getChildren() as $child) {
+            self::collectHierarchyMatches($child, $predicate, $matches);
+        }
+    }
+
+    /**
+     * Returns whether the target game object exists somewhere beneath the supplied root.
+     *
+     * @param GameObject $root
+     * @param GameObject $target
+     * @return bool
+     */
+    private static function hierarchyContains(GameObject $root, GameObject $target): bool
+    {
+        if ($root === $target) {
+            return true;
+        }
+
+        foreach ($root->getChildren() as $child) {
+            if (self::hierarchyContains($child, $target)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

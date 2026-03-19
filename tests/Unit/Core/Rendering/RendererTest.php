@@ -165,6 +165,23 @@ it('restores the previous bounds when a transform position is mutated directly b
     ->toContain("\033[{$oldRow};{$newColumn}H>");
 });
 
+it('renders child sprites at their parent-relative world position', function () {
+  $parent = new GameObject('Player', position: new Vector2(2, 2));
+  $child = new GameObject('Weapon', position: new Vector2(1, 0));
+  $child->setSpriteFromTexture(
+    new Texture(getcwd() . '/tests/Mocks/Textures/test.texture'),
+    new Vector2(0, 0),
+    new Vector2(1, 1)
+  );
+  $child->getTransform()->setParent($parent->getTransform());
+
+  ob_start();
+  $parent->render();
+  $output = ob_get_clean();
+
+  expect($output)->toContain("\033[2;3H>");
+});
+
 function resetSingleton(string $className, string $property): void
 {
   $reflection = new ReflectionClass($className);

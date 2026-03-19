@@ -211,6 +211,10 @@ final class Physics implements SingletonInterface, SimulatorInterface
      */
     public function checkCollisions(ColliderInterface $collider, Vector2 $motion): array
     {
+        if (!$this->isColliderActiveForCollisionChecks($collider)) {
+            return [];
+        }
+
         $collisions = [];
         $projectedBounds = $this->getProjectedBounds($collider, $motion);
 
@@ -223,10 +227,14 @@ final class Physics implements SingletonInterface, SimulatorInterface
                 continue;
             }
 
+            if (!$this->isColliderActiveForCollisionChecks($otherCollider)) {
+                continue;
+            }
+
             if ($projectedBounds->overlaps($otherCollider->getBoundingBox())) {
                 $collisions[] = new Collision($otherCollider, [
                     new ContactPoint(
-                        Vector2::sum($collider->getTransform()->getPosition(), $motion),
+                        Vector2::sum($collider->getTransform()->getWorldPosition(), $motion),
                         $collider,
                         $otherCollider
                     )
@@ -235,6 +243,20 @@ final class Physics implements SingletonInterface, SimulatorInterface
         }
 
         return $collisions;
+    }
+
+    /**
+     * Determines whether a collider should participate in collision queries.
+     *
+     * Object pools keep colliders registered across deactivate/activate cycles, so inactive
+     * or disabled colliders must be skipped to avoid ghost collisions.
+     *
+     * @param ColliderInterface<T> $collider
+     * @return bool
+     */
+    private function isColliderActiveForCollisionChecks(ColliderInterface $collider): bool
+    {
+        return $collider->isEnabled() && $collider->getGameObject()->isActive();
     }
 
     /**
@@ -274,7 +296,7 @@ final class Physics implements SingletonInterface, SimulatorInterface
                 continue;
             }
 
-            $otherPosition = $collider->getTransform()->getPosition();
+            $otherPosition = $collider->getTransform()->getWorldPosition();
 
             if ($otherPosition->getX() === $position->getX() && $otherPosition->getY() === $position->getY()) {
                 return true;

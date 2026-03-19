@@ -6,6 +6,7 @@ use Amasiye\Figlet\FontName;
 use Exception;
 use Sendama\Engine\Core\Rect;
 use Sendama\Engine\Core\Vector2;
+use Sendama\Engine\Debug\Debug;
 use Sendama\Engine\IO\Enumerations\KeyCode;
 use Sendama\Engine\UI\Menus\Interfaces\MenuItemInterface;
 use Sendama\Engine\UI\Menus\Menu;
@@ -73,6 +74,10 @@ class TitleScene extends AbstractScene
      * @var int $titleTopMargin
      */
     protected int $titleTopMargin = 4;
+    /**
+     * @var int|string
+     */
+    protected int|string $newGameSceneTarget = 1;
 
     /**
      * @inheritDoc
@@ -80,7 +85,6 @@ class TitleScene extends AbstractScene
      */
     public function awake(): void
     {
-        $this->sceneManager = SceneManager::getInstance();
         $gameName = getGameName() ?? $this->name;
 
         $this->titleText = new Text(
@@ -97,12 +101,11 @@ class TitleScene extends AbstractScene
         }
 
         $this->menu = new Menu(title: $gameName, description: 'q:quit', dimensions: new Rect(new Vector2($this->getMenuLeftMargin(), $this->getMenuTopMargin()), new Vector2($this->menuWidth, $this->menuHeight)), cancelKey: [KeyCode::Q, KeyCode::q], onCancel: fn() => quitGame());
-        $this->menu->addItem(new MenuItem(label: 'New Game', description: 'Start a new game', icon: '🎮', callback: function () {
-            loadScene(1);
-        }));
+        $this->menu->addItem(new MenuItem(label: 'New Game', description: 'Start a new game', icon: '🎮'));
         $this->menu->addItem(new MenuItem(label: 'Quit', description: 'Quit the game', icon: '🚪', callback: function () {
             quitGame();
         }));
+        $this->configureNewGameMenuItem($this->newGameSceneTarget);
 
         $this->add($this->titleText);
         $this->add($this->menu);
@@ -203,9 +206,8 @@ class TitleScene extends AbstractScene
      */
     public function setNewGameSceneIndex(int $newGameSceneIndex): self
     {
-        $this->menu->getItemByIndex(0)->setCallback(function () use ($newGameSceneIndex) {
-            loadScene(max($newGameSceneIndex, 1));
-        });
+        $this->newGameSceneTarget = $newGameSceneIndex;
+        $this->configureNewGameMenuItem($newGameSceneIndex);
 
         return $this;
     }
@@ -218,9 +220,8 @@ class TitleScene extends AbstractScene
      */
     public function setNewGameSceneIndexBySceneName(string $newGameSceneName): self
     {
-        $this->menu->getItemByIndex(0)->setCallback(function () use ($newGameSceneName) {
-            loadScene($newGameSceneName);
-        });
+        $this->newGameSceneTarget = $newGameSceneName;
+        $this->configureNewGameMenuItem($newGameSceneName);
 
         return $this;
     }
@@ -290,5 +291,42 @@ class TitleScene extends AbstractScene
         }
 
         return DEFAULT_SCREEN_WIDTH;
+    }
+
+    /**
+     * @param int|string $sceneTarget
+     * @return void
+     */
+    private function configureNewGameMenuItem(int|string $sceneTarget): void
+    {
+        $newGameItem = $this->menu->getItemByIndex(0);
+
+        if (!$newGameItem) {
+            return;
+        }
+
+        if ($this->sceneManager->hasScene($sceneTarget)) {
+            $newGameItem->setEnabled(true);
+            $newGameItem->setDescription('Start a new game');
+            $newGameItem->setCallback(function () use ($sceneTarget) {
+                loadScene($sceneTarget);
+            });
+            $this->menu->setActiveItemByIndex(max($this->menu->getActiveItemIndex(), 0));
+            $this->menu->updateWindowContent();
+            return;
+        }
+
+        $newGameItem->setEnabled(false);
+        $newGameItem->setDescription('No playable scene configured');
+        $newGameItem->setCallback(null);
+
+        Debug::warn(sprintf(
+            'Title scene "%s" could not enable "New Game" because scene target "%s" is not available.',
+            $this->getName(),
+            (string)$sceneTarget
+        ));
+
+        $this->menu->setActiveItemByIndex(0);
+        $this->menu->updateWindowContent();
     }
 }

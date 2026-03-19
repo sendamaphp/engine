@@ -75,4 +75,13 @@ describe('Texture', function () {
       ->and($texture->getPixel(0, 1))->toBe('→')
       ->and($texture->getPixel(1, 1))->toBe('↓');
   });
+
+  it('respects the configured texture height when loading pixels', function () {
+    $texture = new Texture($this->unicodeTexturePath, 1, 1);
+
+    expect($texture->getWidth())->toBe(1)
+      ->and($texture->getHeight())->toBe(1)
+      ->and($texture->getPixels())->toHaveCount(1)
+      ->and($texture->getPixel(0, 0))->toBe('←');
+  });
 });

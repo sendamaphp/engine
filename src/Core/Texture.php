@@ -93,6 +93,10 @@ class Texture implements Stringable
         $longestRow = 0;
 
         foreach ($imageMatrix as $row) {
+            if ($this->height > 0 && $height >= $this->height) {
+                break;
+            }
+
             $chunks = Unicode::characters($row, $this->width < 1 ? null : $this->width);
             $width = $this->width < 1 ? count($chunks) : $this->width;
             $this->pixels[] = $chunks;
