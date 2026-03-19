@@ -25,7 +25,8 @@ class MenuItem implements Interfaces\MenuItemInterface
     protected string   $label,
     protected string   $description = '',
     protected string   $icon = '',
-    protected ?Closure $callback = null
+    protected ?Closure $callback = null,
+    protected bool $enabled = true
   )
   {
   }
@@ -33,8 +34,28 @@ class MenuItem implements Interfaces\MenuItemInterface
   /**
    * @inheritDoc
    */
+  public function isEnabled(): bool
+  {
+    return $this->enabled;
+  }
+
+  /**
+   * @inheritDoc
+   */
+  public function setEnabled(bool $enabled): void
+  {
+    $this->enabled = $enabled;
+  }
+
+  /**
+   * @inheritDoc
+   */
   public function execute(?ExecutionContextInterface $context = null): void
   {
+    if (!$this->enabled) {
+      return;
+    }
+
     $this->callback?->call($context ?? $this);
   }
 

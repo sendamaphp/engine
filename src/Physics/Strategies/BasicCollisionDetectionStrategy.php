@@ -26,11 +26,11 @@ class BasicCollisionDetectionStrategy extends AbstractCollisionDetectionStrategy
       return false;
     }
 
-    if ($this->collider->getTransform()->getPosition()->getX() !== $collider->getTransform()->getPosition()->getX()) {
+    if ($this->collider->getTransform()->getWorldPosition()->getX() !== $collider->getTransform()->getWorldPosition()->getX()) {
       return false;
     }
 
-    if ($this->collider->getTransform()->getPosition()->getY() !== $collider->getTransform()->getPosition()->getY()) {
+    if ($this->collider->getTransform()->getWorldPosition()->getY() !== $collider->getTransform()->getWorldPosition()->getY()) {
       return false;
     }
 

@@ -9,6 +9,7 @@ use Sendama\Engine\IO\Console\Console;
 use Sendama\Engine\Physics\CharacterController;
 use Sendama\Engine\Physics\Collider;
 use Sendama\Engine\Physics\EnvironmentCollision;
+use Sendama\Engine\Physics\Interfaces\ColliderInterface;
 use Sendama\Engine\Physics\Interfaces\CollisionInterface;
 use Sendama\Engine\Physics\Physics;
 use Sendama\Engine\Physics\PhysicsMaterial;
@@ -19,11 +20,14 @@ if (!class_exists(RigidbodyCollisionProbe::class)) {
   {
     public array $events = [];
     public array $collisionTypes = [];
+    public array $collisionTags = [];
+    public array $triggerTags = [];
 
-    public function onCollisionEnter(CollisionInterface $collision): void
+    public function onCollisionEnter(CollisionInterface $hit): void
     {
-      $this->events[] = 'enter:' . $collision->getGameObject()->getName();
-      $this->collisionTypes[] = get_class($collision);
+      $this->events[] = 'enter:' . $hit->getGameObject()->getName();
+      $this->collisionTypes[] = get_class($hit);
+      $this->collisionTags[] = $hit->getGameObject()->getTag();
     }
 
     public function onCollisionExit(CollisionInterface $collision): void
@@ -34,6 +38,11 @@ if (!class_exists(RigidbodyCollisionProbe::class)) {
     public function onCollisionStay(CollisionInterface $collision): void
     {
       $this->events[] = 'stay:' . $collision->getGameObject()->getName();
+    }
+
+    public function onTriggerEnter(ColliderInterface $other): void
+    {
+      $this->triggerTags[] = $other->getGameObject()->getTag();
     }
   }
 }
@@ -145,8 +154,10 @@ it('applies physics materials when bouncing off a solid collider', function () {
 });
 
 it('dispatches mirrored collision enter events for rigidbody movement', function () {
-  [$bullet, $rigidbody] = createPhysicsObject('Bullet', $this->texturePath, new Vector2(0, 0), Rigidbody::class);
-  [$enemy, $enemyController] = createPhysicsObject('Enemy', $this->texturePath, new Vector2(1, 0), CharacterController::class);
+  [$bullet, $rigidbody] = createPhysicsObject('Bullet', $this->texturePath, new Vector2(0, 0), Rigidbody::class, 'Bullet');
+  [$enemy, $enemyController] = createPhysicsObject('Enemy', $this->texturePath, new Vector2(1, 0), CharacterController::class, 'Enemy');
+
+  $rigidbody->setTrigger(true);
 
   $bulletProbe = $bullet->addComponent(RigidbodyCollisionProbe::class);
   $enemyProbe = $enemy->addComponent(RigidbodyCollisionProbe::class);
@@ -164,7 +175,11 @@ it('dispatches mirrored collision enter events for rigidbody movement', function
   ob_end_clean();
 
   expect($bulletProbe->events)->toBe(['enter:Enemy'])
-    ->and($enemyProbe->events)->toBe(['enter:Bullet']);
+    ->and($enemyProbe->events)->toBe(['enter:Bullet'])
+    ->and($bulletProbe->collisionTags)->toBe(['Enemy'])
+    ->and($enemyProbe->collisionTags)->toBe(['Bullet'])
+    ->and($bulletProbe->triggerTags)->toBe(['Enemy'])
+    ->and($enemyProbe->triggerTags)->toBe(['Bullet']);
 });
 
 it('restores buffered console content when movePosition advances a rigidbody', function () {
@@ -273,9 +288,9 @@ it('dispatches environment collisions for static collision maps', function () {
  * @param class-string<Collider|Rigidbody> $componentClass
  * @return array{0: GameObject, 1: Collider|Rigidbody}
  */
-function createPhysicsObject(string $name, string $texturePath, Vector2 $position, string $componentClass): array
+function createPhysicsObject(string $name, string $texturePath, Vector2 $position, string $componentClass, ?string $tag = null): array
 {
-  $gameObject = new GameObject($name, position: $position);
+  $gameObject = new GameObject($name, $tag, $position);
   $gameObject->setSpriteFromTexture(
     new \Sendama\Engine\Core\Texture($texturePath),
     new Vector2(0, 0),

@@ -468,8 +468,8 @@ class Rigidbody extends Collider
     private function applyAxisMotion(string $axis, float $targetPosition): float
     {
         $currentGrid = $axis === 'x'
-            ? $this->getTransform()->getPosition()->getX()
-            : $this->getTransform()->getPosition()->getY();
+            ? $this->getTransform()->getWorldPosition()->getX()
+            : $this->getTransform()->getWorldPosition()->getY();
         $desiredGrid = $this->gridCoordinateFromFloat($targetPosition);
         $remainingSteps = $desiredGrid - $currentGrid;
 
@@ -593,12 +593,17 @@ class Rigidbody extends Collider
     {
         $contact = $collision->getContact(0);
         $otherCollider = $contact?->getOtherCollider();
+        $triggerMethodName = $this->resolveTriggerMethodName($methodName);
 
         if ($contact === null) {
             return;
         }
 
-        $this->getGameObject()->broadcast($methodName, ['collision' => $collision]);
+        $this->getGameObject()->broadcast($methodName, [$collision]);
+
+        if ($triggerMethodName !== null && $otherCollider !== null && ($this->isTrigger() || $otherCollider->isTrigger())) {
+            $this->getGameObject()->broadcast($triggerMethodName, [$otherCollider]);
+        }
 
         if ($otherCollider === null) {
             return;
@@ -615,7 +620,27 @@ class Rigidbody extends Collider
             ],
         );
 
-        $otherCollider->getGameObject()->broadcast($methodName, ['collision' => $mirroredCollision]);
+        $otherCollider->getGameObject()->broadcast($methodName, [$mirroredCollision]);
+
+        if ($triggerMethodName !== null && ($this->isTrigger() || $otherCollider->isTrigger())) {
+            $otherCollider->getGameObject()->broadcast($triggerMethodName, [$this]);
+        }
+    }
+
+    /**
+     * Maps collision lifecycle methods onto their trigger equivalents.
+     *
+     * @param string $methodName
+     * @return string|null
+     */
+    private function resolveTriggerMethodName(string $methodName): ?string
+    {
+        return match ($methodName) {
+            'onCollisionEnter' => 'onTriggerEnter',
+            'onCollisionStay' => 'onTriggerStay',
+            'onCollisionExit' => 'onTriggerExit',
+            default => null,
+        };
     }
 
     /**
@@ -656,7 +681,7 @@ class Rigidbody extends Collider
         $this->simulatedRotationX = $targetRotationX;
         $this->simulatedRotationY = $targetRotationY;
 
-        $this->getTransform()->setRotation(
+        $this->getTransform()->setWorldRotation(
             new Vector2(
                 (int)round($targetRotationX),
                 (int)round($targetRotationY)
@@ -672,8 +697,8 @@ class Rigidbody extends Collider
      */
     private function syncSimulationState(bool $force = false): void
     {
-        $position = $this->getTransform()->getPosition();
-        $rotation = $this->getTransform()->getRotation();
+        $position = $this->getTransform()->getWorldPosition();
+        $rotation = $this->getTransform()->getWorldRotation();
 
         if (
             $force ||
@@ -705,7 +730,7 @@ class Rigidbody extends Collider
             return;
         }
 
-        $this->getTransform()->setPosition(
+        $this->getTransform()->setWorldPosition(
             new Vector2(
                 $this->gridCoordinateFromFloat($this->simulatedPositionX),
                 $this->gridCoordinateFromFloat($this->simulatedPositionY),

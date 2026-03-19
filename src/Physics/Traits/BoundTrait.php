@@ -17,12 +17,9 @@ trait BoundTrait
    */
   public function getBoundingBox(): Rect
   {
-    $x = $this->getTransform()
-      ->getPosition()
-      ->getX();
-    $y = $this->getTransform()
-      ->getPosition()
-      ->getY();
+    $worldPosition = $this->getTransform()->getWorldPosition();
+    $x = $worldPosition->getX();
+    $y = $worldPosition->getY();
     return new Rect(
       new Vector2($x, $y),
       new Vector2(

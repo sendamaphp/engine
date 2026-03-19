@@ -142,6 +142,21 @@ describe('GameObject', function () {
       ->and($clone->getSprite()->getRect()->getHeight())->toEqual(1);
   });
 
+  it('clones nested child hierarchies for prefab-style duplication', function () {
+    $child = new GameObject('Child', position: new Vector2(1, 0));
+    $child->getTransform()->setParent($this->gameObject->getTransform());
+
+    $clone = clone $this->gameObject;
+    $cloneChildren = $clone->getChildren();
+
+    expect($cloneChildren)
+      ->toHaveCount(1)
+      ->and($cloneChildren[0])->not()->toBe($child)
+      ->and($cloneChildren[0]->getTransform()->getParent())->toBe($clone->getTransform())
+      ->and($cloneChildren[0]->getTransform()->getPosition()->getX())->toEqual(1)
+      ->and($cloneChildren[0]->getTransform()->getPosition()->getY())->toEqual(0);
+  });
+
   it('can broadcast a message to all components', function () {
     $mockBehaviour1 = $this->gameObject->addComponent(MockBehavior::class);
     $mockBehaviour2 = $this->gameObject->addComponent(MockBehavior::class);
@@ -244,6 +259,52 @@ describe('GameObject', function () {
     expect($rigidbody)->toBeInstanceOf(Rigidbody::class);
 
     $collisions = $physics->checkCollisions($rigidbody, new Vector2(1, 0));
+
+    expect($collisions)
+      ->toHaveCount(1)
+      ->and($collisions[0]->getGameObject()->getName())->toEqual('Wall');
+  });
+
+  it('registers runtime-added collider components for child objects already in the active scene', function () {
+    resetGameObjectSingleton(SceneManager::class, 'instance');
+    resetGameObjectSingleton(Physics::class, 'instance');
+
+    $sceneManager = SceneManager::getInstance();
+    $physics = Physics::getInstance();
+    $scene = new class('Runtime Scene') extends Scene
+    {
+      public function awake(): void
+      {
+      }
+    };
+    $scene->loadSceneSettings([
+      'screen_width' => 10,
+      'screen_height' => 10,
+    ]);
+
+    $activeSceneNode = new ReflectionProperty(SceneManager::class, 'activeSceneNode');
+    $activeSceneNode->setValue($sceneManager, new SceneNode($scene));
+
+    $texturePath = getcwd() . '/tests/Mocks/Textures/test.texture';
+    $parent = new GameObject('Parent', position: new Vector2(2, 0));
+    $child = new GameObject('Child', position: new Vector2(1, 0));
+    $child->setSpriteFromTexture(new Texture($texturePath), new Vector2(0, 0), new Vector2(1, 1));
+    $child->getTransform()->setParent($parent->getTransform());
+
+    $wall = new GameObject('Wall', position: new Vector2(3, 0));
+    $wall->setSpriteFromTexture(new Texture($texturePath), new Vector2(0, 0), new Vector2(1, 1));
+
+    $scene->add($parent);
+    $scene->add($wall);
+    $scene->start();
+
+    $childCollider = $child->addComponent(Collider::class);
+    $wallCollider = $wall->addComponent(Collider::class);
+
+    expect($childCollider)->toBeInstanceOf(Collider::class)
+      ->and($wallCollider)->toBeInstanceOf(Collider::class);
+
+    $collisions = $physics->checkCollisions($childCollider, new Vector2(0, 0));
 
     expect($collisions)
       ->toHaveCount(1)

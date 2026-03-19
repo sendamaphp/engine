@@ -2,6 +2,7 @@
 
 namespace Sendama\Engine\Core\Scenes;
 
+use Sendama\Engine\Core\GameObject;
 use Sendama\Engine\Core\Grid;
 use Sendama\Engine\Core\Interfaces\GameObjectInterface;
 use Sendama\Engine\Core\Rect;
@@ -77,9 +78,14 @@ abstract class AbstractScene implements SceneInterface
     protected string $environmentCollisionMapData = '';
 
     /**
-     * @var bool $started
+     * @var bool Determines whether the scene has started.
      */
     protected bool $started = false;
+
+    /**
+     * @var SceneManager The scene manager that is managing this scene.
+     */
+    protected SceneManager $sceneManager;
 
     /**
      * Constructs a scene.
@@ -89,6 +95,7 @@ abstract class AbstractScene implements SceneInterface
      */
     public final function __construct(protected string $name, protected ?object $sceneMetadata = null)
     {
+        $this->sceneManager = SceneManager::getInstance();
         $this->worldsSpace = new Grid();
         $this->collisionWorldSpace = new Grid();
         $this->physics = Physics::getInstance();
@@ -124,30 +131,6 @@ abstract class AbstractScene implements SceneInterface
     }
 
     /**
-     * Loads the environment collision map data from a file on disk.
-     *
-     * @param string|null $path The path to the environment collision map file.
-     * @return void
-     * @throws FileNotFoundException If the file does not exist.
-     */
-    private function loadEnvironmentCollisionMapData(?string $path = null): void
-    {
-        Debug::info("Loading environment collision map data: $path");
-        $this->environmentCollisionMapData = $this->loadEnvironmentMapData($this->getAbsoluteEnvironmentMapPath($path));
-    }
-
-    /**
-     * Returns the absolute path to an environment map file.
-     *
-     * @param string|null $path The relative map path.
-     * @return string The absolute path to the environment map file.
-     */
-    private function getAbsoluteEnvironmentMapPath(?string $path): string
-    {
-        return Path::join(Path::getWorkingDirectoryAssetsPath(), $path ?? '') . self::MAP_FILE_EXTENSION;
-    }
-
-    /**
      * Loads a generic environment map file from disk.
      *
      * @param string $absolutePath
@@ -165,6 +148,30 @@ abstract class AbstractScene implements SceneInterface
         }
 
         return file_get_contents($absolutePath);
+    }
+
+    /**
+     * Returns the absolute path to an environment map file.
+     *
+     * @param string|null $path The relative map path.
+     * @return string The absolute path to the environment map file.
+     */
+    private function getAbsoluteEnvironmentMapPath(?string $path): string
+    {
+        return Path::join(Path::getWorkingDirectoryAssetsPath(), $path ?? '') . self::MAP_FILE_EXTENSION;
+    }
+
+    /**
+     * Loads the environment collision map data from a file on disk.
+     *
+     * @param string|null $path The path to the environment collision map file.
+     * @return void
+     * @throws FileNotFoundException If the file does not exist.
+     */
+    private function loadEnvironmentCollisionMapData(?string $path = null): void
+    {
+        Debug::info("Loading environment collision map data: $path");
+        $this->environmentCollisionMapData = $this->loadEnvironmentMapData($this->getAbsoluteEnvironmentMapPath($path));
     }
 
     /**
@@ -410,7 +417,12 @@ abstract class AbstractScene implements SceneInterface
     {
         Debug::info('Adding game object ' . $object->getName());
         if ($object instanceof GameObjectInterface) {
-            $this->rootGameObjects[] = $object;
+            $isParentedGameObject = $object instanceof GameObject && $object->getTransform()->hasParent();
+
+            if (!$isParentedGameObject && !in_array($object, $this->rootGameObjects, true)) {
+                $this->rootGameObjects[] = $object;
+            }
+
             if ($collider = $object->getComponent(ColliderInterface::class)) {
                 $this->physics->addCollider($collider);
             }
@@ -530,43 +542,55 @@ abstract class AbstractScene implements SceneInterface
     }
 
     /**
-     * Sets the world space.
-     *
-     * @param Grid $worldSpace The new world space.
-     * @return void
-     */
-    private function setWorldSpace(Grid $worldSpace): void
-    {
-        Debug::info('Setting world space for ' . $this->name);
-        $this->worldsSpace = $worldSpace;
-    }
-
-    /**
      * @inheritDoc
      */
     public function remove(UIElementInterface|GameObjectInterface $object): void
     {
         Debug::info('Removing game object ' . $object->getName());
         if ($object instanceof GameObjectInterface) {
-            $this->rootGameObjects = array_filter($this->rootGameObjects, fn($item) => $item !== $object, $this->rootGameObjects);
-            if ($collider = $object->getComponent('Collider')) {
-                $this->physics->removeCollider($collider);
+            $this->rootGameObjects = array_values(
+                array_filter($this->rootGameObjects, fn($item) => $item !== $object)
+            );
+
+            if ($object instanceof GameObject && $object->getTransform()->hasParent()) {
+                $object->getTransform()->setParent(null);
+            }
+
+            foreach ($this->collectGameObjectHierarchy($object) as $gameObject) {
+                if ($collider = $gameObject->getComponent(ColliderInterface::class)) {
+                    $this->physics->removeCollider($collider);
+                }
             }
         } else {
-            $this->uiElements = array_filter($this->uiElements, fn($item) => $item !== $object, $this->uiElements);
+            $this->uiElements = array_values(
+                array_filter($this->uiElements, fn($item) => $item !== $object)
+            );
         }
 
-        if ($this->isStopped()) {
+        if ($this->isStarted()) {
             $object->stop();
         }
     }
 
     /**
-     * @inheritDoc
+     * Flattens a game object branch so scene-level operations can handle descendants consistently.
+     *
+     * @param GameObjectInterface $object
+     * @return array<GameObject>
      */
-    public function isStopped(): bool
+    private function collectGameObjectHierarchy(GameObjectInterface $object): array
     {
-        return !$this->isStarted();
+        if (!$object instanceof GameObject) {
+            return [];
+        }
+
+        $objects = [$object];
+
+        foreach ($object->getChildren() as $child) {
+            $objects = [...$objects, ...$this->collectGameObjectHierarchy($child)];
+        }
+
+        return $objects;
     }
 
     /**
@@ -604,6 +628,14 @@ abstract class AbstractScene implements SceneInterface
     /**
      * @inheritDoc
      */
+    public function isStopped(): bool
+    {
+        return !$this->isStarted();
+    }
+
+    /**
+     * @inheritDoc
+     */
     public function getSettings(?string $key): mixed
     {
         if ($key === null) {
@@ -619,6 +651,18 @@ abstract class AbstractScene implements SceneInterface
     public function getSceneManager(): SceneManager
     {
         return SceneManager::getInstance();
+    }
+
+    /**
+     * Sets the world space.
+     *
+     * @param Grid $worldSpace The new world space.
+     * @return void
+     */
+    private function setWorldSpace(Grid $worldSpace): void
+    {
+        Debug::info('Setting world space for ' . $this->name);
+        $this->worldsSpace = $worldSpace;
     }
 
     /**

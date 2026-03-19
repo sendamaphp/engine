@@ -27,8 +27,8 @@ class SeparationBasedCollisionDetectionStrategy extends AbstractCollisionDetecti
     }
 
     return Vector2::distance(
-      $this->collider->getTransform()->getPosition(),
-      $collider->getTransform()->getPosition()
+      $this->collider->getTransform()->getWorldPosition(),
+      $collider->getTransform()->getWorldPosition()
     ) < 1;
   }
 }

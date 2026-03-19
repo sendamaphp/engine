@@ -81,8 +81,9 @@ class Renderer extends Component implements CanRender
       return;
     }
 
-    $xOffset = $this->getGameObject()->getTransform()->getPosition()->getX() + ($x ?? 0);
-    $yOffset = $this->getGameObject()->getTransform()->getPosition()->getY() + ($y ?? 0);
+    $worldPosition = $this->getGameObject()->getTransform()->getWorldPosition();
+    $xOffset = $worldPosition->getX() + ($x ?? 0);
+    $yOffset = $worldPosition->getY() + ($y ?? 0);
     $width = $this->sprite->getRect()->getWidth();
     $height = $this->sprite->getRect()->getHeight();
     $spriteBufferedImage = $this->sprite->getBufferedImage();

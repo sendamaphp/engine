@@ -105,8 +105,13 @@ class CharacterController extends Collider implements ObservableInterface
     {
         $contact = $collision->getContact(0);
         $otherCollider = $contact?->getOtherCollider();
+        $triggerMethodName = $this->resolveTriggerMethodName($methodName);
 
-        $this->getGameObject()->broadcast($methodName, ['collision' => $collision]);
+        $this->getGameObject()->broadcast($methodName, [$collision]);
+
+        if ($triggerMethodName !== null && $otherCollider !== null && ($this->isTrigger() || $otherCollider->isTrigger())) {
+            $this->getGameObject()->broadcast($triggerMethodName, [$otherCollider]);
+        }
 
         if ($otherCollider !== null) {
             $mirroredCollision = new Collision(
@@ -120,10 +125,30 @@ class CharacterController extends Collider implements ObservableInterface
                 ],
             );
 
-            $otherCollider->getGameObject()->broadcast($methodName, ['collision' => $mirroredCollision]);
+            $otherCollider->getGameObject()->broadcast($methodName, [$mirroredCollision]);
+
+            if ($triggerMethodName !== null && ($this->isTrigger() || $otherCollider->isTrigger())) {
+                $otherCollider->getGameObject()->broadcast($triggerMethodName, [$this]);
+            }
         }
 
         Debug::log("Collision for {$collision->getGameObject()->getName()} at " . $collision->getContact(0)?->getPoint());
+    }
+
+    /**
+     * Maps collision lifecycle methods onto their trigger equivalents.
+     *
+     * @param string $methodName
+     * @return string|null
+     */
+    private function resolveTriggerMethodName(string $methodName): ?string
+    {
+        return match ($methodName) {
+            'onCollisionEnter' => 'onTriggerEnter',
+            'onCollisionStay' => 'onTriggerStay',
+            'onCollisionExit' => 'onTriggerExit',
+            default => null,
+        };
     }
 
     /**

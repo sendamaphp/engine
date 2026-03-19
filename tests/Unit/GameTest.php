@@ -83,6 +83,32 @@ it('builds a managed tmux relaunch command for the current php entrypoint', func
     ->toContain("'Arcade Mode'");
 });
 
+it('disables the tmux status bar for non-debug managed runtime sessions', function () {
+  $command = invokePrivateStaticMethod(
+    Game::class,
+    'buildTmuxSessionLaunchCommand',
+    'The-Collector',
+    '/tmp/sendama',
+    'php game.php',
+    false,
+  );
+
+  expect($command)->toContain("set-option -t 'The-Collector' status off");
+});
+
+it('keeps the tmux status bar enabled for debug managed runtime sessions', function () {
+  $command = invokePrivateStaticMethod(
+    Game::class,
+    'buildTmuxSessionLaunchCommand',
+    'The-Collector',
+    '/tmp/sendama',
+    'php game.php',
+    true,
+  );
+
+  expect($command)->not()->toContain('status off');
+});
+
 it('only uses the tmux handoff when the current command can be relaunched', function () {
   expect(invokePrivateStaticMethod(Game::class, 'canRelaunchCurrentCommand', []))->toBeFalse()
     ->and(invokePrivateStaticMethod(Game::class, 'canRelaunchCurrentCommand', ['/tmp/game.php']))->toBe(PHP_SAPI === 'cli');

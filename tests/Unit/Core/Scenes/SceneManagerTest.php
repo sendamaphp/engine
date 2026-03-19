@@ -7,8 +7,10 @@ use Sendama\Engine\Core\Rect;
 use Sendama\Engine\Core\Scenes\SceneManager;
 use Sendama\Engine\Core\Vector2;
 use Sendama\Engine\IO\Console\Console;
+use Sendama\Engine\IO\Enumerations\Color as EngineColor;
 use Sendama\Engine\Mocks\MockBehavior;
 use Sendama\Engine\Physics\Physics;
+use Sendama\Engine\UI\GUITexture\GUITexture;
 use Sendama\Engine\UI\Label\Label;
 use Sendama\Engine\UI\UIElement;
 use Sendama\Engine\Util\Path;
@@ -35,6 +37,14 @@ if (!class_exists(SceneManagerPrefabProbe::class)) {
   }
 }
 
+if (!class_exists(SceneManagerVectorProbe::class)) {
+  class SceneManagerVectorProbe extends Behaviour
+  {
+    public ?Vector2 $minBound = null;
+    public ?Vector2 $maxBound = null;
+  }
+}
+
 beforeEach(function () {
   resetSceneManagerStaticProperty(SceneManager::class, 'instance', null);
   $this->originalCwd = getcwd();
@@ -58,6 +68,7 @@ beforeEach(function () {
   $this->sceneWithComponentDataPath = Path::join(dirname(__DIR__, 3), 'Mocks', 'Scenes', 'scene_with_component_data');
   $this->sceneWithEnvironmentCollisionPath = Path::join(dirname(__DIR__, 3), 'Mocks', 'Scenes', 'scene_with_environment_collision');
   $this->sceneWithNamedObjectsPath = Path::join(dirname(__DIR__, 3), 'Mocks', 'Scenes', 'scene_with_named_objects');
+  $this->sceneWithNestedObjectsPath = Path::join(dirname(__DIR__, 3), 'Mocks', 'Scenes', 'scene_with_nested_objects');
 });
 
 afterEach(function () {
@@ -134,6 +145,72 @@ it('preserves authored scene object names for find lookups', function () {
     ->and($uiElement->getName())->toBe('Score');
 });
 
+it('hydrates gui textures from file scene metadata', function () {
+  $workspace = sys_get_temp_dir() . '/sendama-gui-texture-' . uniqid('', true);
+  $texturesDirectory = $workspace . '/assets/Textures';
+  $scenesDirectory = $workspace . '/assets/Scenes';
+
+  mkdir($texturesDirectory, 0777, true);
+  mkdir($scenesDirectory, 0777, true);
+
+  file_put_contents($texturesDirectory . '/hud.texture', "><\n[]\n");
+  file_put_contents($scenesDirectory . '/gui_texture.scene.php', <<<'PHP'
+<?php
+
+return [
+    'name' => 'GUI Texture Scene',
+    'width' => 20,
+    'height' => 10,
+    'hierarchy' => [
+        [
+            'type' => \Sendama\Engine\UI\GUITexture\GUITexture::class,
+            'name' => 'HUD Logo',
+            'tag' => 'HUD',
+            'position' => ['x' => 2, 'y' => 1],
+            'size' => ['x' => 2, 'y' => 2],
+            'texture' => 'Textures/hud',
+            'color' => 'Yellow',
+        ],
+    ],
+];
+PHP);
+
+  chdir($workspace);
+
+  ob_start();
+  $this->sceneManager->loadSceneFromFile($scenesDirectory . '/gui_texture');
+  $this->sceneManager->loadScene('GUI Texture Scene');
+  ob_end_clean();
+
+  $uiElement = UIElement::find('HUD Logo');
+
+  expect($uiElement)->toBeInstanceOf(GUITexture::class)
+    ->and($uiElement?->getTag())->toBe('HUD')
+    ->and($uiElement?->getTexturePath())->toBe('Textures/hud')
+    ->and($uiElement?->getColor())->toBe(EngineColor::YELLOW);
+});
+
+it('hydrates nested hierarchy children as runtime game objects', function () {
+  ob_start();
+  $this->sceneManager->loadSceneFromFile($this->sceneWithNestedObjectsPath);
+  $this->sceneManager->loadScene('Scene With Nested Objects');
+  ob_end_clean();
+
+  $scene = $this->sceneManager->getActiveScene();
+  $player = GameObject::find('Player');
+  $weapon = GameObject::find('Weapon');
+
+  expect($scene)->not()->toBeNull()
+    ->and($scene->getRootGameObjects())->toHaveCount(1)
+    ->and($player)->toBeInstanceOf(GameObject::class)
+    ->and($weapon)->toBeInstanceOf(GameObject::class)
+    ->and($weapon->getTransform()->getParent())->toBe($player->getTransform())
+    ->and($weapon->getTransform()->getWorldPosition()->getX())->toBe(3)
+    ->and($weapon->getTransform()->getWorldPosition()->getY())->toBe(2)
+    ->and(GameObject::findWithTag('Equipment'))->toBe($weapon)
+    ->and(GameObject::findAllWithTag('Equipment'))->toHaveCount(1);
+});
+
 it('inflates prefab reference fields into concrete game object templates', function () {
   $workspace = sys_get_temp_dir() . '/sendama-prefab-' . uniqid('', true);
   $prefabsDirectory = $workspace . '/assets/Prefabs';
@@ -204,6 +281,28 @@ PHP);
     ->and($probe->enemyPrefab)->toBeInstanceOf(GameObject::class)
     ->and($probe->enemyPrefab->getName())->toBe('Enemy Prefab')
     ->and($probe->enemyPrefab->getComponent(MockBehavior::class))->toBeInstanceOf(MockBehavior::class);
+});
+
+it('hydrates vector component fields from legacy string metadata', function () {
+  $probe = new SceneManagerVectorProbe(new GameObject('Bullet'));
+
+  SceneManager::applySceneComponentMetadata(
+    $probe,
+    SceneManagerVectorProbe::class,
+    (object) [
+      'data' => (object) [
+        'minBound' => '[1,1]',
+        'maxBound' => '[120,25]',
+      ],
+    ]
+  );
+
+  expect($probe->minBound)->toBeInstanceOf(Vector2::class)
+    ->and($probe->minBound?->getX())->toBe(1)
+    ->and($probe->minBound?->getY())->toBe(1)
+    ->and($probe->maxBound)->toBeInstanceOf(Vector2::class)
+    ->and($probe->maxBound?->getX())->toBe(120)
+    ->and($probe->maxBound?->getY())->toBe(25);
 });
 
 function resetSceneManagerStaticProperty(string $className, string $propertyName, mixed $value): void

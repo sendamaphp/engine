@@ -18,10 +18,24 @@ if (!class_exists(CharacterControllerCollisionProbe::class)) {
   class CharacterControllerCollisionProbe extends Behaviour
   {
     public array $collisionTypes = [];
+    public array $collisionTargets = [];
+    public array $triggerTargets = [];
 
-    public function onCollisionEnter(CollisionInterface $collision): void
+    public function onCollisionEnter(CollisionInterface $hit): void
     {
-      $this->collisionTypes[] = get_class($collision);
+      $this->collisionTypes[] = get_class($hit);
+      $this->collisionTargets[] = [
+        'self' => $this->getGameObject()->getTag(),
+        'other' => $hit->getGameObject()->getTag(),
+      ];
+    }
+
+    public function onTriggerEnter(ColliderInterface $other): void
+    {
+      $this->triggerTargets[] = [
+        'self' => $this->getGameObject()->getTag(),
+        'other' => $other->getGameObject()->getTag(),
+      ];
     }
   }
 }
@@ -42,8 +56,9 @@ beforeEach(function () {
     Vector2 $position,
     string $componentClass = Collider::class,
     bool $isTrigger = false,
+    ?string $tag = null,
   ): array {
-    $gameObject = new GameObject($name);
+    $gameObject = new GameObject($name, $tag);
     $gameObject->setSprite(($this->makeSprite)());
     $gameObject->getTransform()->setPosition($position);
 
@@ -69,6 +84,48 @@ it('checks projected bounds against only the colliders that overlap the motion p
     ->and($collisions[0]->getGameObject()->getName())->toBe('Wall')
     ->and($collisions[0]->getContact(0)?->getOtherCollider())->toBe($blocker)
     ->and($collisions[0]->getGameObject()->getName())->not()->toBe($distant->getGameObject()->getName());
+});
+
+it('ignores inactive colliders that remain registered for object pool reuse', function () {
+  [, $controller] = ($this->makeCollider)('Player', new Vector2(0, 0), CharacterController::class);
+  [$pooledBullet] = ($this->makeCollider)('Bullet', new Vector2(1, 0));
+
+  $pooledBullet->deactivate();
+
+  $collisions = Physics::getInstance()->checkCollisions($controller, new Vector2(1, 0));
+
+  expect($collisions)->toBe([]);
+});
+
+it('emits mirrored trigger callbacks with the other collider identity for both participants', function () {
+  [$player, $controller] = ($this->makeCollider)('Player', new Vector2(0, 0), CharacterController::class, false, 'Player');
+  [$coin, $triggerCollider] = ($this->makeCollider)('Coin', new Vector2(1, 0), Collider::class, true, 'Pickup');
+
+  $playerProbe = $player->addComponent(CharacterControllerCollisionProbe::class);
+  $coinProbe = $coin->addComponent(CharacterControllerCollisionProbe::class);
+
+  ob_start();
+  $controller->move(new Vector2(1, 0));
+  ob_end_clean();
+
+  expect($playerProbe->collisionTargets)->toBe([[
+    'self' => 'Player',
+    'other' => 'Pickup',
+  ]])
+    ->and($coinProbe->collisionTargets)->toBe([[
+      'self' => 'Pickup',
+      'other' => 'Player',
+    ]])
+    ->and($playerProbe->triggerTargets)->toBe([[
+      'self' => 'Player',
+      'other' => 'Pickup',
+    ]])
+    ->and($coinProbe->triggerTargets)->toBe([[
+      'self' => 'Pickup',
+      'other' => 'Player',
+    ]])
+    ->and($player->getTransform()->getPosition()->getX())->toBe(1)
+    ->and($triggerCollider->isTrigger())->toBeTrue();
 });
 
 it('stops a character controller before it moves into a solid collider', function () {

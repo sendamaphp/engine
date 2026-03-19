@@ -65,11 +65,11 @@ readonly class ContactPoint
   public function getNormal(): Vector2
   {
     if ($this->otherCollider === null) {
-      return Vector2::difference($this->point, $this->thisCollider->getTransform()->getPosition())->getNormalized();
+      return Vector2::difference(Vector2::getClone($this->point), $this->thisCollider->getTransform()->getWorldPosition())->getNormalized();
     }
 
-    $otherPosition = $this->otherCollider->getTransform()->getPosition();
-    $thisPosition = $this->thisCollider->getTransform()->getPosition();
+    $otherPosition = $this->otherCollider->getTransform()->getWorldPosition();
+    $thisPosition = $this->thisCollider->getTransform()->getWorldPosition();
 
     return Vector2::difference($otherPosition, $thisPosition)->getNormalized();
   }
@@ -82,12 +82,12 @@ readonly class ContactPoint
   public function getSeparation(): float
   {
     if ($this->otherCollider === null) {
-      return Vector2::distance($this->thisCollider->getTransform()->getPosition(), $this->point);
+      return Vector2::distance($this->thisCollider->getTransform()->getWorldPosition(), $this->point);
     }
 
     return Vector2::distance(
-      $this->thisCollider->getTransform()->getPosition(),
-      $this->otherCollider->getTransform()->getPosition()
+      $this->thisCollider->getTransform()->getWorldPosition(),
+      $this->otherCollider->getTransform()->getWorldPosition()
     );
   }
 }
