@@ -7,12 +7,15 @@ use Sendama\Engine\Core\Scenes\SceneManager;
 use Sendama\Engine\Core\Vector2;
 use Sendama\Engine\Events\EventManager;
 use Sendama\Engine\Game;
+use Sendama\Engine\Interfaces\GameStateInterface;
 use Sendama\Engine\IO\Console\Console;
+use Sendama\Engine\IO\InputManager;
 use Sendama\Engine\Messaging\Notifications\NotificationsManager;
 use Sendama\Engine\States\GameStateContext;
 use Sendama\Engine\States\PausedState;
 use Sendama\Engine\UI\Label\Label;
 use Sendama\Engine\UI\Modals\ModalManager;
+use Sendama\Engine\UI\Menus\Menu;
 use Sendama\Engine\UI\UIManager;
 
 beforeEach(function () {
@@ -21,6 +24,8 @@ beforeEach(function () {
   resetPausedStateSingleton(ModalManager::class, 'instance');
   resetPausedStateSingleton(NotificationsManager::class, 'instance');
   resetPausedStateSingleton(UIManager::class, 'instance');
+  setPausedStateInputManagerState('previousKeyPress', '');
+  setPausedStateInputManagerState('keyPress', '');
 });
 
 it('centers the default pause text over the occupied scene bounds instead of the full logical canvas', function () {
@@ -73,14 +78,97 @@ it('centers the default pause text over the occupied scene bounds instead of the
   expect($output)->toContain("\033[14;38HPAUSED");
 });
 
+it('does not update the pause menu on the frame resume is requested', function () {
+  $sceneState = new class implements GameStateInterface {
+    public function enter(GameStateContext $context): void
+    {
+      // Do nothing.
+    }
+
+    public function exit(GameStateContext $context): void
+    {
+      // Do nothing.
+    }
+
+    public function update(): void
+    {
+      // Do nothing.
+    }
+
+    public function render(): void
+    {
+      // Do nothing.
+    }
+
+    public function suspend(): void
+    {
+      // Do nothing.
+    }
+
+    public function resume(): void
+    {
+      // Do nothing.
+    }
+  };
+
+  $game = new TestGame([
+    SettingsKey::PAUSE_KEY->value => 'escape',
+  ]);
+  $game->registerState('scene', $sceneState);
+
+  $state = new PausedState(new GameStateContext(
+    $game,
+    SceneManager::getInstance(),
+    EventManager::getInstance(),
+    ModalManager::getInstance(),
+    NotificationsManager::getInstance(),
+    UIManager::getInstance(),
+  ));
+
+  $game->registerState('paused', $state);
+  $game->setCurrentState($state);
+
+  $menu = new class('', '') extends Menu {
+    public int $updateCount = 0;
+
+    public function update(): void
+    {
+      $this->updateCount++;
+    }
+  };
+
+  $reflection = new ReflectionClass($state);
+  $reflection->getProperty('menu')->setValue($state, $menu);
+
+  setPausedStateInputManagerState('previousKeyPress', '');
+  setPausedStateInputManagerState('keyPress', "\033");
+
+  ob_start();
+  $state->update();
+  ob_end_clean();
+
+  expect($game->getCurrentState())->toBe($sceneState)
+    ->and($menu->updateCount)->toBe(0);
+});
+
 function resetPausedStateSingleton(string $className, string $property): void
 {
   $reflection = new \ReflectionClass($className);
   $reflection->getProperty($property)->setValue(null, null);
 }
 
+function setPausedStateInputManagerState(string $property, string $value): void
+{
+  $reflection = new ReflectionClass(InputManager::class);
+  $reflection->getProperty($property)->setValue(null, $value);
+}
+
 final class TestGame extends Game
 {
+  /** @var array<string, GameStateInterface> */
+  private array $states = [];
+  private ?GameStateInterface $currentState = null;
+
   public function __construct(private array $testSettings = [])
   {
     // Intentionally skip the parent bootstrapping for unit tests.
@@ -104,5 +192,30 @@ final class TestGame extends Game
     }
 
     return $this->testSettings[$key] ?? null;
+  }
+
+  public function registerState(string $name, GameStateInterface $state): void
+  {
+    $this->states[$name] = $state;
+  }
+
+  public function setCurrentState(GameStateInterface $state): void
+  {
+    $this->currentState = $state;
+  }
+
+  public function getCurrentState(): ?GameStateInterface
+  {
+    return $this->currentState;
+  }
+
+  public function getState(string $stateName): ?GameStateInterface
+  {
+    return $this->states[$stateName] ?? null;
+  }
+
+  public function setState(GameStateInterface $state): void
+  {
+    $this->currentState = $state;
   }
 }

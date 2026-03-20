@@ -25,8 +25,12 @@ class SceneState extends GameState
    */
   public function update(): void
   {
-    if (Input::isKeyDown($this->game->getSettings(SettingsKey::PAUSE_KEY->value))) {
+    if (
+      Input::isKeyDown($this->game->getSettings(SettingsKey::PAUSE_KEY->value))
+      && $this->game->getState('paused')
+    ) {
       $this->suspend();
+      return;
     }
 
     $this->sceneManager->update();

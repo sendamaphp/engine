@@ -5,6 +5,8 @@ use Sendama\Engine\Core\Behaviours\Behaviour;
 use Sendama\Engine\Core\GameObject;
 use Sendama\Engine\Core\Rect;
 use Sendama\Engine\Core\Scenes\SceneManager;
+use Sendama\Engine\Core\Sprite;
+use Sendama\Engine\Core\Texture;
 use Sendama\Engine\Core\Vector2;
 use Sendama\Engine\IO\Console\Console;
 use Sendama\Engine\IO\Enumerations\Color as EngineColor;
@@ -42,6 +44,42 @@ if (!class_exists(SceneManagerVectorProbe::class)) {
   {
     public ?Vector2 $minBound = null;
     public ?Vector2 $maxBound = null;
+  }
+}
+
+if (!class_exists(SceneManagerUIElementProbe::class)) {
+  class SceneManagerUIElementProbe extends Behaviour
+  {
+    public ?UIElement $statusUi = null;
+    public ?GUITexture $heart = null;
+  }
+}
+
+if (!class_exists(SceneManagerNativeTypeProbe::class)) {
+  class SceneManagerNativeTypeProbe extends Behaviour
+  {
+    public ?Texture $bulletTexture = null;
+    public ?Rect $clipRect = null;
+    public ?Sprite $aimSprite = null;
+    public ?EngineColor $tint = null;
+  }
+}
+
+if (!class_exists(SceneManagerCompoundSettings::class)) {
+  class SceneManagerCompoundSettings
+  {
+    public int $waves = 0;
+    public ?Vector2 $origin = null;
+  }
+}
+
+if (!class_exists(SceneManagerCompoundProbe::class)) {
+  class SceneManagerCompoundProbe extends Behaviour
+  {
+    /** @var Vector2[] */
+    public array $waypoints = [];
+
+    public ?SceneManagerCompoundSettings $settings = null;
   }
 }
 
@@ -190,6 +228,78 @@ PHP);
     ->and($uiElement?->getColor())->toBe(EngineColor::YELLOW);
 });
 
+it('hydrates component ui element references from scene metadata after the scene ui is built', function () {
+  $workspace = sys_get_temp_dir() . '/sendama-ui-reference-' . uniqid('', true);
+  $texturesDirectory = $workspace . '/assets/Textures';
+  $scenesDirectory = $workspace . '/assets/Scenes';
+
+  mkdir($texturesDirectory, 0777, true);
+  mkdir($scenesDirectory, 0777, true);
+
+  file_put_contents($texturesDirectory . '/heart.texture', "[]\n");
+  file_put_contents($scenesDirectory . '/ui_reference.scene.php', <<<'PHP'
+<?php
+
+return [
+    'name' => 'UI Reference Scene',
+    'width' => 20,
+    'height' => 10,
+    'hierarchy' => [
+        [
+            'type' => \Sendama\Engine\Core\GameObject::class,
+            'name' => 'Level Manager',
+            'tag' => 'Manager',
+            'position' => ['x' => 0, 'y' => 0],
+            'rotation' => ['x' => 0, 'y' => 0],
+            'scale' => ['x' => 1, 'y' => 1],
+            'components' => [
+                [
+                    'class' => \SceneManagerUIElementProbe::class,
+                    'data' => [
+                        'statusUi' => 'Score',
+                        'heart' => 'Heart #1',
+                    ],
+                ],
+            ],
+        ],
+        [
+            'type' => \Sendama\Engine\UI\Label\Label::class,
+            'name' => 'Score',
+            'tag' => 'UI',
+            'position' => ['x' => 1, 'y' => 1],
+            'size' => ['x' => 8, 'y' => 1],
+            'text' => 'Score: 0',
+        ],
+        [
+            'type' => \Sendama\Engine\UI\GUITexture\GUITexture::class,
+            'name' => 'Heart #1',
+            'tag' => 'UI',
+            'position' => ['x' => 1, 'y' => 2],
+            'size' => ['x' => 1, 'y' => 1],
+            'texture' => 'Textures/heart',
+            'color' => 'White',
+        ],
+    ],
+];
+PHP);
+
+  chdir($workspace);
+
+  ob_start();
+  $this->sceneManager->loadSceneFromFile($scenesDirectory . '/ui_reference');
+  $this->sceneManager->loadScene('UI Reference Scene');
+  ob_end_clean();
+
+  $scene = $this->sceneManager->getActiveScene();
+  $controller = $scene?->getRootGameObjects()[0]?->getComponent(SceneManagerUIElementProbe::class);
+
+  expect($controller)->toBeInstanceOf(SceneManagerUIElementProbe::class)
+    ->and($controller?->statusUi)->toBeInstanceOf(Label::class)
+    ->and($controller?->statusUi?->getName())->toBe('Score')
+    ->and($controller?->heart)->toBeInstanceOf(GUITexture::class)
+    ->and($controller?->heart?->getName())->toBe('Heart #1');
+});
+
 it('hydrates nested hierarchy children as runtime game objects', function () {
   ob_start();
   $this->sceneManager->loadSceneFromFile($this->sceneWithNestedObjectsPath);
@@ -303,6 +413,91 @@ it('hydrates vector component fields from legacy string metadata', function () {
     ->and($probe->maxBound)->toBeInstanceOf(Vector2::class)
     ->and($probe->maxBound?->getX())->toBe(120)
     ->and($probe->maxBound?->getY())->toBe(25);
+});
+
+it('hydrates native engine component fields from scene metadata', function () {
+  $workspace = sys_get_temp_dir() . '/sendama-native-type-hydration-' . uniqid('', true);
+  $texturesDirectory = $workspace . '/assets/Textures';
+  mkdir($texturesDirectory, 0777, true);
+  file_put_contents($texturesDirectory . '/bullet.texture', "<>\n[]\n");
+
+  chdir($workspace);
+
+  $probe = new SceneManagerNativeTypeProbe(new GameObject('Weapon'));
+
+  SceneManager::applySceneComponentMetadata(
+    $probe,
+    SceneManagerNativeTypeProbe::class,
+    (object) [
+      'data' => (object) [
+        'bulletTexture' => 'Textures/bullet',
+        'clipRect' => [
+          'x' => 1,
+          'y' => 2,
+          'width' => 3,
+          'height' => 4,
+        ],
+        'aimSprite' => [
+          'texture' => 'Textures/bullet',
+          'rect' => [
+            'x' => 0,
+            'y' => 1,
+            'width' => 1,
+            'height' => 1,
+          ],
+          'pivot' => [
+            'x' => 1,
+            'y' => 0,
+          ],
+        ],
+        'tint' => 'Light Red',
+      ],
+    ],
+  );
+
+  expect($probe->bulletTexture)->toBeInstanceOf(Texture::class)
+    ->and($probe->bulletTexture?->getPath())->toBe('Textures/bullet.texture')
+    ->and($probe->clipRect)->toBeInstanceOf(Rect::class)
+    ->and($probe->clipRect?->getX())->toBe(1)
+    ->and($probe->clipRect?->getY())->toBe(2)
+    ->and($probe->clipRect?->getWidth())->toBe(3)
+    ->and($probe->clipRect?->getHeight())->toBe(4)
+    ->and($probe->aimSprite)->toBeInstanceOf(Sprite::class)
+    ->and($probe->aimSprite?->getTexture()->getPath())->toBe('Textures/bullet.texture')
+    ->and($probe->aimSprite?->getRect()->getY())->toBe(1)
+    ->and($probe->aimSprite?->getPivot()->getX())->toBe(1)
+    ->and($probe->tint)->toBe(EngineColor::LIGHT_RED);
+});
+
+it('hydrates compound component structures and typed vector lists from scene metadata', function () {
+  $probe = new SceneManagerCompoundProbe(new GameObject('Spawner'));
+
+  SceneManager::applySceneComponentMetadata(
+    $probe,
+    SceneManagerCompoundProbe::class,
+    (object) [
+      'data' => (object) [
+        'waypoints' => [
+          ['x' => 1, 'y' => 2],
+          ['x' => 3, 'y' => 4],
+        ],
+        'settings' => [
+          'waves' => 3,
+          'origin' => ['x' => 8, 'y' => 9],
+        ],
+      ],
+    ],
+  );
+
+  expect($probe->waypoints)->toHaveCount(2)
+    ->and($probe->waypoints[0])->toBeInstanceOf(Vector2::class)
+    ->and($probe->waypoints[0]->getX())->toBe(1)
+    ->and($probe->waypoints[1]->getY())->toBe(4)
+    ->and($probe->settings)->toBeInstanceOf(SceneManagerCompoundSettings::class)
+    ->and($probe->settings?->waves)->toBe(3)
+    ->and($probe->settings?->origin)->toBeInstanceOf(Vector2::class)
+    ->and($probe->settings?->origin?->getX())->toBe(8)
+    ->and($probe->settings?->origin?->getY())->toBe(9);
 });
 
 function resetSceneManagerStaticProperty(string $className, string $propertyName, mixed $value): void
