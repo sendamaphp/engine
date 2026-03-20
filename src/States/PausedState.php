@@ -24,8 +24,12 @@ class PausedState extends GameState
    */
   public function update(): void
   {
-    if (Input::isKeyDown($this->game->getSettings('pause_key'))) {
+    if (
+      Input::isKeyDown($this->game->getSettings('pause_key'))
+      && $this->game->getState('scene')
+    ) {
       $this->resume();
+      return;
     }
 
     $this->menu?->update();

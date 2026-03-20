@@ -30,6 +30,8 @@ class Texture implements Stringable
      */
     protected array $pixels = [];
     private string $path;
+    private int $requestedWidth;
+    private int $requestedHeight;
 
     /**
      * Creates a new instance of the Texture class.
@@ -41,6 +43,8 @@ class Texture implements Stringable
     public function __construct(string $path, int $width = -1, int $height = -1, private ?Color $color = null, protected array $options = [])
     {
         $this->path = $path;
+        $this->requestedWidth = $width;
+        $this->requestedHeight = $height;
 
         if (!str_ends_with($this->getAbsolutePath(), self::TEXTURE_EXTENSION)) {
             $this->path .= self::TEXTURE_EXTENSION;
@@ -54,6 +58,36 @@ class Texture implements Stringable
         $this->setHeight($height);
 
         $this->loadImage();
+    }
+
+    /**
+     * Returns the authored texture path.
+     *
+     * @return string
+     */
+    public function getPath(): string
+    {
+        return $this->path;
+    }
+
+    /**
+     * Returns the width constraint used when the texture was authored.
+     *
+     * @return int
+     */
+    public function getRequestedWidth(): int
+    {
+        return $this->requestedWidth;
+    }
+
+    /**
+     * Returns the height constraint used when the texture was authored.
+     *
+     * @return int
+     */
+    public function getRequestedHeight(): int
+    {
+        return $this->requestedHeight;
     }
 
     /**
