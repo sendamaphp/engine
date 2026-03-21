@@ -105,7 +105,9 @@ class GUITexture extends UIElement
 
     public function render(): void
     {
-        $this->renderAt($this->position->getX(), $this->position->getY());
+        if ($this->isActive()) {
+            $this->renderAt($this->position->getX(), $this->position->getY());
+        }
     }
 
     public function renderAt(?int $x = null, ?int $y = null): void

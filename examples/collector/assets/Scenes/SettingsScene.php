@@ -34,7 +34,6 @@ class SettingsScene extends AbstractScene
     $screenWidth = $sceneManager->getSettings('screen_width') ?? DEFAULT_SCREEN_WIDTH;
     $screenHeight = $sceneManager->getSettings('screen_height') ?? DEFAULT_SCREEN_HEIGHT;
 
-    Debug::log(var_export($this->settings, true));
     $leftMargin = round($screenWidth / 2 - $settingsMenuWidth / 2);
     $topMargin = round($screenHeight / 2 - $settingsMenuHeight / 2);
     $settingsMenuBorderPack = new BorderPack(Path::join(Path::getVendorAssetsDirectory(), 'border-packs', 'slim.border.php'));

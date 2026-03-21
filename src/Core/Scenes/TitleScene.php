@@ -121,6 +121,7 @@ class TitleScene extends AbstractScene
     private function getMenuLeftMargin(): int
     {
         $screenWidth = $this->resolveScreenWidth();
+        Debug::log("Screen width: $screenWidth");
         return (int)round($screenWidth / 2) - (int)round($this->menuWidth / 2);
     }
 
@@ -263,10 +264,12 @@ class TitleScene extends AbstractScene
      * Resolves the screen width even while the scene is still in awake() and local scene settings are empty.
      *
      * @return int
+     * @throws Exception
      */
     private function resolveScreenWidth(): int
     {
         return $this->resolveDimension(
+            get_screen_width(),
             $this->screenWidth,
             $this->sceneManager->getSettings('screen_width'),
             $this->getSettings('screen_width'),

@@ -32,7 +32,6 @@ class SimpleBackListener extends Behaviour
       $this->nextPrintTime = time() + 1;
     }
     if (Input::isAnyKeyPressed($this->backKeys)) {
-      Debug::log('Going back');
       loadPreviousScene();
     }
   }
