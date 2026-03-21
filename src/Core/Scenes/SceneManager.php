@@ -111,11 +111,6 @@ final class SceneManager implements SingletonInterface, CanStart, CanResume, Can
     {
         $sceneList = $this->scenes->toArray();
 
-        Debug::log(var_export([
-            "index" => $index,
-            "total" => $this->scenes->count(),
-            "scenes" => array_map(fn(SceneInterface $scene) => $scene->getName(), $sceneList)
-        ], true));
         foreach ($sceneList as $i => $scene) {
             if (is_int($index) && $i === $index) {
                 return true;

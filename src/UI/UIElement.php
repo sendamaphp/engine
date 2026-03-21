@@ -151,6 +151,7 @@ abstract class UIElement implements UIElementInterface
      */
     public function activate(): void
     {
+        $this->render();
         $this->active = true;
     }
 
@@ -159,6 +160,7 @@ abstract class UIElement implements UIElementInterface
      */
     public function deactivate(): void
     {
+        $this->erase();
         $this->active = false;
     }
 

@@ -434,6 +434,31 @@ if (!function_exists('get_screen_width')) {
     {
         return Console::getSize()->getWidth();
     }
+
+        if (!function_exists('get_terminal_width')) {
+            /**
+             * Returns the actual terminal width (freshly polled).
+             *
+             * @return int
+             * @throws Exception
+             */
+            function get_terminal_width(): int
+            {
+                return Console::getSize(force: true)->getWidth();
+            }
+        }
+
+        if (!function_exists('get_logical_width')) {
+            /**
+             * Returns the game's logical viewport width (may be different than terminal width).
+             *
+             * @return int
+             */
+            function get_logical_width(): int
+            {
+                return Console::getLogicalWidth();
+            }
+        }
 }
 
 if (!function_exists('get_configured_screen_width')) {
@@ -459,6 +484,31 @@ if (!function_exists('get_screen_height')) {
     {
         return Console::getSize()->getHeight();
     }
+
+        if (!function_exists('get_terminal_height')) {
+            /**
+             * Returns the actual terminal height (freshly polled).
+             *
+             * @return int
+             * @throws Exception
+             */
+            function get_terminal_height(): int
+            {
+                return Console::getSize(force: true)->getHeight();
+            }
+        }
+
+        if (!function_exists('get_logical_height')) {
+            /**
+             * Returns the game's logical viewport height.
+             *
+             * @return int
+             */
+            function get_logical_height(): int
+            {
+                return Console::getLogicalHeight();
+            }
+        }
 }
 
 if (!function_exists('get_configured_screen_height')) {

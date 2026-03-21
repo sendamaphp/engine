@@ -116,7 +116,7 @@ class Game implements ObservableInterface
      */
     private UIManager $uiManager;
     /**
-     * @var Cursor $consoleCursor
+     * @var Cursor|null $consoleCursor
      */
     private ?Cursor $consoleCursor = null;
     /**
@@ -139,15 +139,36 @@ class Game implements ObservableInterface
     private ?SplashScreen $splashScreen = null;
     private bool $consoleInitialized = false;
 
+    public int $screenWidth {
+        get {
+            if (is_null($this->resolvedScreenWidth)) {
+                return exec('tput cols') ?: 80;
+            }
+
+            return $this->resolvedScreenWidth;
+        }
+    }
+
+    public int $screenHeight {
+        get {
+            if (is_null($this->resolvedScreenWidth)) {
+                return exec('tput cols') ?: 80;
+            }
+
+            return $this->resolvedScreenHeight;
+        }
+    }
+
     /**
      * Game constructor.
      *
      * @param string $name The name of the game.
-     * @param int $screenWidth The width of the game screen.
-     * @param int $screenHeight The height of the game screen.
-     * @throws Exception
+     * @param int|null $resolvedScreenWidth The width of the game screen.
+     * @param int|null $resolvedScreenHeight The height of the game screen.
+     * @param string|null $workingDirectory
+     * @throws IOException
      */
-    public function __construct(private readonly string $name, private readonly int $screenWidth = DEFAULT_SCREEN_WIDTH, private readonly int $screenHeight = DEFAULT_SCREEN_HEIGHT, private readonly ?string $workingDirectory = null)
+    public function __construct(private readonly string $name, private readonly ?int $resolvedScreenWidth = null, private readonly ?int $resolvedScreenHeight = null, private readonly ?string $workingDirectory = null)
     {
         try {
             $this->initializeObservers();
