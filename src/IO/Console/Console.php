@@ -278,6 +278,36 @@ class Console
   }
 
   /**
+   * Returns the current logical viewport size (game screen dimensions).
+   *
+   * @return Rect The logical viewport size as a Rect starting at (1,1).
+   */
+  public static function getLogicalSize(): Rect
+  {
+    return new Rect(new Vector2(1, 1), new Vector2(self::$logicalWidth, self::$logicalHeight));
+  }
+
+  /**
+   * Returns the logical viewport width.
+   *
+   * @return int
+   */
+  public static function getLogicalWidth(): int
+  {
+    return max(1, self::$logicalWidth);
+  }
+
+  /**
+   * Returns the logical viewport height.
+   *
+   * @return int
+   */
+  public static function getLogicalHeight(): int
+  {
+    return max(1, self::$logicalHeight);
+  }
+
+  /**
    * Refreshes the logical viewport within the current terminal size.
    *
    * @param int $logicalWidth The logical width of the game.
