@@ -152,7 +152,7 @@ class Game implements ObservableInterface
     public int $screenHeight {
         get {
             if (is_null($this->resolvedScreenWidth)) {
-                return exec('tput cols') ?: 80;
+                return exec('tput lines') ?: 40;
             }
 
             return $this->resolvedScreenHeight;

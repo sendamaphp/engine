@@ -79,6 +79,13 @@ class TitleScene extends AbstractScene
      */
     protected int|string $newGameSceneTarget = 1;
 
+    protected int $uiHeight {
+        get {
+            $gap = 1;
+            return $this->titleText->getHeight() + $gap + $this->menu->getItems()->count() + 2; // 1 for each border
+        }
+    }
+
     /**
      * @inheritDoc
      * @throws Exception
@@ -86,12 +93,14 @@ class TitleScene extends AbstractScene
     public function awake(): void
     {
         $gameName = getGameName() ?? $this->name;
+        $screenWidth = $this->resolveScreenWidth();
+        $titleTextHeight = 5;
 
         $this->titleText = new Text(
             scene: $this,
             name: $gameName,
             position: new Vector2(0, $this->titleTopMargin),
-            size: new Vector2($this->resolveScreenWidth(), 5)
+            size: new Vector2($screenWidth, $titleTextHeight)
         );
         $this->titleText->setFontName(FontName::BIG->value);
         $this->setTitleText($gameName);
@@ -100,7 +109,8 @@ class TitleScene extends AbstractScene
             $gameName = $_ENV['GAME_NAME'] ?? $this->name;
         }
 
-        $this->menu = new Menu(title: $gameName, description: 'q:quit', dimensions: new Rect(new Vector2($this->getMenuLeftMargin(), $this->getMenuTopMargin()), new Vector2($this->menuWidth, $this->menuHeight)), cancelKey: [KeyCode::Q, KeyCode::q], onCancel: fn() => quitGame());
+        $menuDimensions = new Rect(new Vector2($this->getMenuLeftMargin(), $this->getMenuTopMargin()), new Vector2($this->menuWidth, $this->menuHeight));
+        $this->menu = new Menu(title: $gameName, description: 'q:quit', dimensions: $menuDimensions, cancelKey: [KeyCode::Q, KeyCode::q], onCancel: fn() => quitGame());
         $this->menu->addItem(new MenuItem(label: 'New Game', description: 'Start a new game', icon: '🎮'));
         $this->menu->addItem(new MenuItem(label: 'Quit', description: 'Quit the game', icon: '🚪', callback: function () {
             quitGame();
@@ -121,7 +131,6 @@ class TitleScene extends AbstractScene
     private function getMenuLeftMargin(): int
     {
         $screenWidth = $this->resolveScreenWidth();
-        Debug::log("Screen width: $screenWidth");
         return (int)round($screenWidth / 2) - (int)round($this->menuWidth / 2);
     }
 
@@ -141,10 +150,31 @@ class TitleScene extends AbstractScene
     public function setTitleText(string $text): self
     {
         $this->titleText->setText($text);
+        usleep(300000);
+        // Ensure the Text has fresh dimensions — Figlet/font rendering or
+        // console init may have completed after setText() ran. Refresh
+        // dimensions if the helper exists so getWidth() is reliable here.
+        try {
+            if (method_exists($this->titleText, 'refreshDimensions')) {
+                $this->titleText->refreshDimensions();
+            }
+        } catch (\Throwable $_) {
+            // best-effort
+        }
+
         $screenWidth = $this->resolveScreenWidth();
-        $this->titleLeftMargin = round(($screenWidth / 2) - ($this->titleText->getWidth() / 2));
+        $this->titleLeftMargin = (int)intdiv(max(0, $screenWidth - $this->titleText->getWidth()), 2);
         $this->titleTopMargin = self::TOP_MARGIN_OFFSET;
-        $this->titleText->setPosition(new Vector2(round($this->titleLeftMargin), round($this->titleTopMargin)));
+        $this->titleText->setPosition(new Vector2($this->titleLeftMargin, $this->titleTopMargin));
+        Debug::log(var_export([
+            'screenWidth' => $screenWidth,
+            'titleText' => $this->titleText->getText(),
+            'titleTextWidth' => $this->titleText->getWidth(),
+            'titleLeftMargin' => $this->titleLeftMargin,
+            'titleTopMargin' => $this->titleTopMargin,
+            'titlePosition' => (string)$this->titleText->getPosition(),
+            'timestamp' => time(),
+        ], true));
 
         return $this;
     }
@@ -269,7 +299,6 @@ class TitleScene extends AbstractScene
     private function resolveScreenWidth(): int
     {
         return $this->resolveDimension(
-            get_screen_width(),
             $this->screenWidth,
             $this->sceneManager->getSettings('screen_width'),
             $this->getSettings('screen_width'),
