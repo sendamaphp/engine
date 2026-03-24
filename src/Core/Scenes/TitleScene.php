@@ -150,8 +150,20 @@ class TitleScene extends AbstractScene
     public function setTitleText(string $text): self
     {
         $this->titleText->setText($text);
+        usleep(300000);
+        // Ensure the Text has fresh dimensions — Figlet/font rendering or
+        // console init may have completed after setText() ran. Refresh
+        // dimensions if the helper exists so getWidth() is reliable here.
+        try {
+            if (method_exists($this->titleText, 'refreshDimensions')) {
+                $this->titleText->refreshDimensions();
+            }
+        } catch (\Throwable $_) {
+            // best-effort
+        }
+
         $screenWidth = $this->resolveScreenWidth();
-        $this->titleLeftMargin = round(($screenWidth / 2) - ($this->titleText->getWidth() / 2));
+        $this->titleLeftMargin = (int)intdiv(max(0, $screenWidth - $this->titleText->getWidth()), 2);
         $this->titleTopMargin = self::TOP_MARGIN_OFFSET;
         $this->titleText->setPosition(new Vector2($this->titleLeftMargin, $this->titleTopMargin));
         Debug::log(var_export([

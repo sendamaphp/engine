@@ -284,4 +284,24 @@ class Text extends UIElement
         $this->renderHeight = count($this->rawLines);
         Debug::log(time() . ' - ' . __METHOD__ . " - width: {$this->getWidth()}");
     }
+
+    /**
+     * Force re-evaluation of raw lines and calculated dimensions.
+     * Use this when external state (fonts, console, colors) may have changed
+     * and an immediate, accurate width/height is required.
+     *
+     * This is intentionally a best-effort helper: it will not throw if Figlet
+     * rendering fails; instead it logs a warning.
+     *
+     * @return void
+     */
+    public function refreshDimensions(): void
+    {
+        try {
+            $this->updateRawLines();
+            $this->calculateDimensions();
+        } catch (\Throwable $e) {
+            Debug::warn('Text::refreshDimensions failed: ' . $e->getMessage());
+        }
+    }
 }
