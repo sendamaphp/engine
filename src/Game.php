@@ -820,10 +820,17 @@ class Game implements ObservableInterface
      */
     private function refreshConsoleLayout(bool $forceTerminalSize = false): void
     {
+        $terminalSize = $forceTerminalSize ? Console::getSize(force: true) : Console::getSize();
+        $activeScene = $this->sceneManager->getActiveScene();
+
+        if ($activeScene && $activeScene->usesResponsiveViewport()) {
+            $activeScene->syncResponsiveViewport($terminalSize);
+        }
+
         Console::refreshLayout(
             $this->getLogicalScreenWidth(),
             $this->getLogicalScreenHeight(),
-            $forceTerminalSize ? Console::getSize(force: true) : null
+            $terminalSize
         );
     }
 

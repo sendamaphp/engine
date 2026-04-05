@@ -510,10 +510,9 @@ class Rigidbody extends Collider
     private function applyCollisionResponse(string $axis, CollisionInterface $collision): void
     {
         $otherCollider = $collision->getContact(0)?->getOtherCollider();
-        $otherMaterial = $otherCollider && method_exists($otherCollider, 'getMaterial')
-            ? $otherCollider->getMaterial()
-            : new PhysicsMaterial();
-        $combinedMaterial = $this->getMaterial()->combine($otherMaterial);
+        $combinedMaterial = $otherCollider && method_exists($otherCollider, 'getMaterial')
+            ? $this->getMaterial()->combine($otherCollider->getMaterial())
+            : $this->getMaterial();
 
         if ($axis === 'x') {
             $this->velocityX = $this->sanitizeVelocity($combinedMaterial->applyBounce($this->velocityX));

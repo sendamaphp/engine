@@ -23,7 +23,10 @@ use Sendama\Engine\Util\Config\PlayerPreferences;
 /* Application */
 function getGameName(): string
 {
-    return SceneManager::getInstance()->getSettings('game_name') ?? $_ENV['GAME_NAME'];
+    return SceneManager::getInstance()->getSettings('game_name')
+        ?? $_ENV['GAME_NAME']
+        ?? getenv('GAME_NAME')
+        ?? 'Sendama Game';
 }
 
 if (!function_exists('dispatchEvent')) {

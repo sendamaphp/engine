@@ -12,6 +12,7 @@ use Sendama\Engine\IO\Console\Console;
 use Sendama\Engine\IO\Enumerations\Color as EngineColor;
 use Sendama\Engine\Mocks\MockBehavior;
 use Sendama\Engine\Physics\Physics;
+use Sendama\Engine\Physics\PhysicsMaterial;
 use Sendama\Engine\UI\GUITexture\GUITexture;
 use Sendama\Engine\UI\Label\Label;
 use Sendama\Engine\UI\UIElement;
@@ -62,6 +63,13 @@ if (!class_exists(SceneManagerNativeTypeProbe::class)) {
     public ?Rect $clipRect = null;
     public ?Sprite $aimSprite = null;
     public ?EngineColor $tint = null;
+  }
+}
+
+if (!class_exists(SceneManagerMaterialProbe::class)) {
+  class SceneManagerMaterialProbe extends Behaviour
+  {
+    public ?PhysicsMaterial $bounceMaterial = null;
   }
 }
 
@@ -122,7 +130,7 @@ it('applies file scene dimensions to the active viewport and centered layout', f
   ob_end_clean();
 
   $scene = $this->sceneManager->getActiveScene();
-  $terminalSize = Console::getSize(force: true);
+  $terminalSize = Console::getSize();
   $offset = Console::getRenderOffset();
   $expectedOffsetX = (int)floor(($terminalSize->getWidth() - 80) / 2) + 1;
   $expectedOffsetY = (int)floor(($terminalSize->getHeight() - 25) / 2) + 1;
@@ -134,6 +142,105 @@ it('applies file scene dimensions to the active viewport and centered layout', f
     ->and($scene->getCamera()->getViewport()->getHeight())->toBe(25)
     ->and($offset->getX())->toBe($expectedOffsetX)
     ->and($offset->getY())->toBe($expectedOffsetY);
+});
+
+it('uses the available terminal size for scene metadata dimensions set to null', function () {
+  $workspace = sys_get_temp_dir() . '/sendama-responsive-scene-' . uniqid('', true);
+  $scenesDirectory = $workspace . '/assets/Scenes';
+
+  mkdir($scenesDirectory, 0777, true);
+
+  file_put_contents($scenesDirectory . '/responsive.scene.php', <<<'PHP'
+<?php
+
+return [
+    'name' => 'Responsive Scene',
+    'width' => null,
+    'height' => null,
+    'hierarchy' => [],
+];
+PHP);
+
+  chdir($workspace);
+
+  Console::refreshLayout(
+    120,
+    32,
+    new Rect(new Vector2(1, 1), new Vector2(120, 32)),
+    clearWhenChanged: false
+  );
+
+  ob_start();
+  $this->sceneManager->loadSceneFromFile($scenesDirectory . '/responsive');
+  $this->sceneManager->loadScene('Responsive Scene');
+  ob_end_clean();
+
+  $scene = $this->sceneManager->getActiveScene();
+  $offset = Console::getRenderOffset();
+
+  expect($scene)->not()->toBeNull()
+    ->and($scene->usesResponsiveViewport())->toBeTrue()
+    ->and($scene->getSettings('screen_width'))->toBe(120)
+    ->and($scene->getSettings('screen_height'))->toBe(32)
+    ->and($scene->getCamera()->getViewport()->getWidth())->toBe(120)
+    ->and($scene->getCamera()->getViewport()->getHeight())->toBe(32)
+    ->and($offset->getX())->toBe(1)
+    ->and($offset->getY())->toBe(1);
+
+  $scene->syncResponsiveViewport(new Rect(new Vector2(1, 1), new Vector2(96, 28)));
+
+  expect($scene->getSettings('screen_width'))->toBe(96)
+    ->and($scene->getSettings('screen_height'))->toBe(28)
+    ->and($scene->getCamera()->getViewport()->getWidth())->toBe(96)
+    ->and($scene->getCamera()->getViewport()->getHeight())->toBe(28);
+});
+
+it('tracks only the null scene dimension and preserves fixed metadata dimensions', function () {
+  $workspace = sys_get_temp_dir() . '/sendama-partial-responsive-scene-' . uniqid('', true);
+  $scenesDirectory = $workspace . '/assets/Scenes';
+
+  mkdir($scenesDirectory, 0777, true);
+
+  file_put_contents($scenesDirectory . '/responsive_width.scene.php', <<<'PHP'
+<?php
+
+return [
+    'name' => 'Responsive Width Scene',
+    'width' => null,
+    'height' => 12,
+    'hierarchy' => [],
+];
+PHP);
+
+  chdir($workspace);
+
+  Console::refreshLayout(
+    88,
+    30,
+    new Rect(new Vector2(1, 1), new Vector2(88, 30)),
+    clearWhenChanged: false
+  );
+
+  ob_start();
+  $this->sceneManager->loadSceneFromFile($scenesDirectory . '/responsive_width');
+  $this->sceneManager->loadScene('Responsive Width Scene');
+  ob_end_clean();
+
+  $scene = $this->sceneManager->getActiveScene();
+
+  expect($scene)->not()->toBeNull()
+    ->and($scene->usesResponsiveViewport())->toBeTrue()
+    ->and($scene->getSettings('screen_width'))->toBe(88)
+    ->and($scene->getSettings('screen_height'))->toBe(12)
+    ->and($scene->getCamera()->getViewport()->getWidth())->toBe(88)
+    ->and($scene->getCamera()->getViewport()->getHeight())->toBe(12);
+
+  $scene->syncResponsiveViewport(new Rect(new Vector2(1, 1), new Vector2(104, 40)));
+
+  expect($scene->getSettings('screen_width'))->toBe(104)
+    ->and($scene->getSettings('screen_height'))->toBe(12)
+    ->and($scene->getCamera()->getViewport()->getWidth())->toBe(104)
+    ->and($scene->getCamera()->getViewport()->getHeight())->toBe(12);
 });
 
 it('hydrates component data from editor scene files', function () {
@@ -152,6 +259,132 @@ it('hydrates component data from editor scene files', function () {
   expect($probeComponent)->toBeInstanceOf(SceneManagerDataProbe::class)
     ->and($probeComponent->speed)->toBe(3)
     ->and($probeComponent->getPower())->toBe(7);
+});
+
+it('hydrates physics materials from material assets in scene metadata', function () {
+  $workspace = sys_get_temp_dir() . '/sendama-scene-material-assets-' . uniqid('', true);
+  $assetsDirectory = $workspace . '/assets';
+  $materialsDirectory = $assetsDirectory . '/Materials';
+  $scenesDirectory = $assetsDirectory . '/Scenes';
+
+  mkdir($materialsDirectory, 0777, true);
+  mkdir($scenesDirectory, 0777, true);
+
+  file_put_contents($materialsDirectory . '/perfectly-elastic.material.php', <<<'PHP'
+<?php
+
+return [
+    'type' => 'physics',
+    'name' => 'Perfectly Elastic',
+    'friction' => 0.0,
+    'bounciness' => 1.0,
+];
+PHP);
+
+  file_put_contents($scenesDirectory . '/material_scene.scene.php', <<<'PHP'
+<?php
+
+use Sendama\Engine\Core\GameObject;
+use Sendama\Engine\Physics\Rigidbody;
+
+return [
+    'name' => 'Material Scene',
+    'hierarchy' => [
+        [
+            'type' => GameObject::class,
+            'name' => 'Ball',
+            'position' => ['x' => 1, 'y' => 1],
+            'components' => [
+                [
+                    'class' => Rigidbody::class,
+                    'data' => [
+                        'material' => 'Materials/perfectly-elastic.material.php',
+                    ],
+                ],
+            ],
+        ],
+    ],
+];
+PHP);
+
+  chdir($workspace);
+
+  ob_start();
+  $this->sceneManager->loadSceneFromFile($scenesDirectory . '/material_scene');
+  $this->sceneManager->loadScene('Material Scene');
+  ob_end_clean();
+
+  $scene = $this->sceneManager->getActiveScene();
+  $rigidbody = $scene?->getRootGameObjects()[0]?->getComponent(\Sendama\Engine\Physics\Rigidbody::class);
+  $material = $rigidbody?->getMaterial();
+
+  expect($material)->toBeInstanceOf(PhysicsMaterial::class)
+    ->and($material->friction)->toBe(0.0)
+    ->and($material->bounciness)->toBe(1.0)
+    ->and($material->name)->toBe('Perfectly Elastic')
+    ->and($material->getAssetPath())->toBe('Materials/perfectly-elastic.material.php');
+});
+
+it('hydrates typed physics material component fields from scene metadata', function () {
+  $workspace = sys_get_temp_dir() . '/sendama-scene-typed-material-field-' . uniqid('', true);
+  $assetsDirectory = $workspace . '/assets';
+  $materialsDirectory = $assetsDirectory . '/Materials';
+  $scenesDirectory = $assetsDirectory . '/Scenes';
+
+  mkdir($materialsDirectory, 0777, true);
+  mkdir($scenesDirectory, 0777, true);
+
+  file_put_contents($materialsDirectory . '/bouncy.material.php', <<<'PHP'
+<?php
+
+return [
+    'type' => 'physics',
+    'name' => 'Bouncy',
+    'friction' => 0.1,
+    'bounciness' => 0.9,
+];
+PHP);
+
+  file_put_contents($scenesDirectory . '/typed_material.scene.php', <<<'PHP'
+<?php
+
+use Sendama\Engine\Core\GameObject;
+
+return [
+    'name' => 'Typed Material Scene',
+    'hierarchy' => [
+        [
+            'type' => GameObject::class,
+            'name' => 'Probe',
+            'position' => ['x' => 1, 'y' => 1],
+            'components' => [
+                [
+                    'class' => SceneManagerMaterialProbe::class,
+                    'data' => [
+                        'bounceMaterial' => 'Materials/bouncy.material.php',
+                    ],
+                ],
+            ],
+        ],
+    ],
+];
+PHP);
+
+  chdir($workspace);
+
+  ob_start();
+  $this->sceneManager->loadSceneFromFile($scenesDirectory . '/typed_material');
+  $this->sceneManager->loadScene('Typed Material Scene');
+  ob_end_clean();
+
+  $scene = $this->sceneManager->getActiveScene();
+  $probe = $scene?->getRootGameObjects()[0]?->getComponent(SceneManagerMaterialProbe::class);
+
+  expect($probe)->toBeInstanceOf(SceneManagerMaterialProbe::class)
+    ->and($probe->bounceMaterial)->toBeInstanceOf(PhysicsMaterial::class)
+    ->and($probe->bounceMaterial?->friction)->toBe(0.1)
+    ->and($probe->bounceMaterial?->bounciness)->toBe(0.9)
+    ->and($probe->bounceMaterial?->getAssetPath())->toBe('Materials/bouncy.material.php');
 });
 
 it('loads static collision maps from scene metadata without requiring a rendered tile map', function () {

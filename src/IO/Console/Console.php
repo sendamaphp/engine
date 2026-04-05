@@ -323,6 +323,10 @@ class Console
     bool $clearWhenChanged = true,
   ): bool
   {
+    if ($terminalSize instanceof Rect) {
+      self::$lastSizeCheckAt = microtime(true);
+    }
+
     $terminalSize ??= self::getSize();
 
     $terminalWidth = max(1, $terminalSize->getWidth());

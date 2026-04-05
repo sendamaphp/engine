@@ -1,0 +1,29 @@
+{
+    "name": "sendamaphp/example-game-snake",
+    "description": "A simple remake of the classic Snake game.",
+    "type": "project",
+    "require-dev": {
+        "pestphp/pest": "^4.4",
+        "phpstan/phpstan": "^2.1"
+    },
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "Sendamaphp\\ExampleGameSnake\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Andrew Masiye",
+            "email": "amasiye313@gmail.com"
+        }
+    ],
+    "require": {
+        "sendamaphp/engine": "^0.5.7"
+    },
+    "config": {
+        "allow-plugins": {
+            "pestphp/pest-plugin": true
+        }
+    }
+}

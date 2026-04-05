@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "c2c6223392d9aee3c45be9b6e47c8746",
+    "content-hash": "13159fe18b6de689b287208ea2c79431",
     "packages": [
         {
             "name": "amasiye/figlet",
@@ -519,6 +519,64 @@
                 "source": "https://github.com/Seldaek/cli-prompt/tree/1.0.4"
             },
             "time": "2020-12-15T21:32:01+00:00"
+        },
+        {
+            "name": "sendamaphp/engine",
+            "version": "0.5.7",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/sendamaphp/engine.git",
+                "reference": "44f178837ea72848f9db063800c386070a5e1cfe"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/sendamaphp/engine/zipball/44f178837ea72848f9db063800c386070a5e1cfe",
+                "reference": "44f178837ea72848f9db063800c386070a5e1cfe",
+                "shasum": ""
+            },
+            "require": {
+                "amasiye/figlet": "^1.2",
+                "assegaiphp/collections": "^0.3.2",
+                "ext-pcntl": "*",
+                "league/climate": "^3.8",
+                "php": "^8.4",
+                "swaggest/json-schema": "^0.12.43",
+                "symfony/polyfill-php83": "^1.33",
+                "vlucas/phpdotenv": "^5.6"
+            },
+            "require-dev": {
+                "pestphp/pest": "^4.3",
+                "phpstan/phpstan": "^1.10"
+            },
+            "type": "library",
+            "autoload": {
+                "files": [
+                    "src/Util/Constants.php",
+                    "src/Util/Functions.php"
+                ],
+                "psr-4": {
+                    "Sendama\\Engine\\": "src/",
+                    "Sendama\\Engine\\Mocks\\": "tests/Mocks/",
+                    "Sendama\\Examples\\Blasters\\": "examples/blasters/assets/",
+                    "Sendama\\Examples\\Collector\\": "examples/collector/assets/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Andrew Masiye",
+                    "email": "amasiye313@gmail.com"
+                }
+            ],
+            "description": "A simple game engine for making terminal/console games. Lovingly written in pure PHP.",
+            "support": {
+                "issues": "https://github.com/sendamaphp/engine/issues",
+                "source": "https://github.com/sendamaphp/engine/tree/0.5.7"
+            },
+            "time": "2026-03-24T09:47:02+00:00"
         },
         {
             "name": "swaggest/json-diff",
@@ -2907,15 +2965,15 @@
         },
         {
             "name": "phpstan/phpstan",
-            "version": "1.12.33",
+            "version": "2.1.42",
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/phpstan/phpstan/zipball/37982d6fc7cbb746dda7773530cda557cdf119e1",
-                "reference": "37982d6fc7cbb746dda7773530cda557cdf119e1",
+                "url": "https://api.github.com/repos/phpstan/phpstan/zipball/1279e1ce86ba768f0780c9d889852b4e02ff40d0",
+                "reference": "1279e1ce86ba768f0780c9d889852b4e02ff40d0",
                 "shasum": ""
             },
             "require": {
-                "php": "^7.2|^8.0"
+                "php": "^7.4|^8.0"
             },
             "conflict": {
                 "phpstan/phpstan-shim": "*"
@@ -2956,7 +3014,7 @@
                     "type": "github"
                 }
             ],
-            "time": "2026-02-28T20:30:03+00:00"
+            "time": "2026-03-17T14:58:32+00:00"
         },
         {
             "name": "phpunit/php-code-coverage",
@@ -4720,10 +4778,7 @@
     "stability-flags": {},
     "prefer-stable": false,
     "prefer-lowest": false,
-    "platform": {
-        "php": "^8.4",
-        "ext-pcntl": "*"
-    },
+    "platform": {},
     "platform-dev": {},
     "plugin-api-version": "2.9.0"
 }

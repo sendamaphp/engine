@@ -1,0 +1,9 @@
+/vendor/
+/logs/
+.idea
+.vscode
+.cache
+/node_modules/
+
+*.log
+

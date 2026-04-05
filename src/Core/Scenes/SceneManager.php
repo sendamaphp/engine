@@ -211,12 +211,13 @@ final class SceneManager implements SingletonInterface, CanStart, CanResume, Can
         }
 
         $loadedScene = $sceneToBeLoaded->loadSceneSettings($sceneSettings);
+        $loadedScene->syncResponsiveViewport(Console::getSize());
         $viewport = $loadedScene->getCamera()->getViewport();
 
         Console::refreshLayout(
             $viewport->getWidth(),
             $viewport->getHeight(),
-            Console::getSize(force: true)
+            Console::getSize()
         );
 
         $this->activeSceneNode = new SceneNode($loadedScene, $this->activeSceneNode);
@@ -224,6 +225,27 @@ final class SceneManager implements SingletonInterface, CanStart, CanResume, Can
 
         $this->start();
         return $this;
+    }
+
+    /**
+     * Returns the first defined scene metadata value for a list of aliases.
+     *
+     * @param object $sceneMetadata
+     * @param array<int, string> $keys
+     * @param bool $isDefined
+     * @return mixed
+     */
+    private static function getDefinedSceneMetadataValue(object $sceneMetadata, array $keys, bool &$isDefined = false): mixed
+    {
+        foreach ($keys as $key) {
+            if (property_exists($sceneMetadata, $key)) {
+                $isDefined = true;
+                return $sceneMetadata->{$key};
+            }
+        }
+
+        $isDefined = false;
+        return null;
     }
 
     /**
@@ -365,6 +387,7 @@ final class SceneManager implements SingletonInterface, CanStart, CanResume, Can
     {
         if ($settings) {
             $this->settings = $settings;
+            $this->synchronizeTitleScenes();
         }
     }
 
@@ -392,6 +415,16 @@ final class SceneManager implements SingletonInterface, CanStart, CanResume, Can
         $sceneMetadata = json_decode(json_encode($sceneMetadata, JSON_UNESCAPED_SLASHES), false);
         self::$metadataAssetsRoot = Path::normalize(dirname($filename, 2));
 
+        $sceneWidthDefined = false;
+        $sceneWidth = self::getDefinedSceneMetadataValue($sceneMetadata, ['screen_width', 'screenWidth', 'width'], $sceneWidthDefined);
+        $sceneHeightDefined = false;
+        $sceneHeight = self::getDefinedSceneMetadataValue($sceneMetadata, ['screen_height', 'screenHeight', 'height'], $sceneHeightDefined);
+
+        $sceneMetadata->__sendamaSceneWidthDefined = $sceneWidthDefined;
+        $sceneMetadata->__sendamaSceneWidth = $sceneWidth;
+        $sceneMetadata->__sendamaSceneHeightDefined = $sceneHeightDefined;
+        $sceneMetadata->__sendamaSceneHeight = $sceneHeight;
+
         $sceneName = $sceneMetadata->name ?? basename($path);
 
         $scene = new class($sceneName, $sceneMetadata) extends AbstractScene {
@@ -403,15 +436,22 @@ final class SceneManager implements SingletonInterface, CanStart, CanResume, Can
             {
                 $sceneMetadata = $this->sceneMetadata;
 
-                $sceneWidth = $sceneMetadata->screen_width ?? $sceneMetadata->screenWidth ?? $sceneMetadata->width ?? null;
+                $sceneWidthDefined = (bool)($sceneMetadata->__sendamaSceneWidthDefined ?? false);
+                $sceneWidth = $sceneMetadata->__sendamaSceneWidth ?? null;
                 if (is_numeric($sceneWidth)) {
                     $this->settings['screen_width'] = (int)$sceneWidth;
                 }
 
-                $sceneHeight = $sceneMetadata->screen_height ?? $sceneMetadata->screenHeight ?? $sceneMetadata->height ?? null;
+                $sceneHeightDefined = (bool)($sceneMetadata->__sendamaSceneHeightDefined ?? false);
+                $sceneHeight = $sceneMetadata->__sendamaSceneHeight ?? null;
                 if (is_numeric($sceneHeight)) {
                     $this->settings['screen_height'] = (int)$sceneHeight;
                 }
+
+                $this->setResponsiveViewportDimensions(
+                    width: $sceneWidthDefined && $sceneWidth === null,
+                    height: $sceneHeightDefined && $sceneHeight === null
+                );
 
                 if (isset($sceneMetadata->environmentTileMapPath)) {
                     $this->environmentTileMapPath = $sceneMetadata->environmentTileMapPath;
@@ -645,7 +685,7 @@ final class SceneManager implements SingletonInterface, CanStart, CanResume, Can
 
         foreach ($componentOptions as $key => $value) {
             if ($key === 'material' && ($component instanceof Collider || $component instanceof Rigidbody)) {
-                $component->setMaterial(PhysicsMaterial::fromMetadata((array)$value));
+                $component->setMaterial(PhysicsMaterial::fromMetadata($value));
                 continue;
             }
 
@@ -735,6 +775,13 @@ final class SceneManager implements SingletonInterface, CanStart, CanResume, Can
             return [
                 'shouldAssign' => true,
                 'value' => self::hydrateSpritePropertyValue($property, $value),
+            ];
+        }
+
+        if (self::propertyAcceptsClass($property, PhysicsMaterial::class)) {
+            return [
+                'shouldAssign' => true,
+                'value' => PhysicsMaterial::fromMetadata($value),
             ];
         }
 
@@ -1929,6 +1976,10 @@ final class SceneManager implements SingletonInterface, CanStart, CanResume, Can
             }
         }
 
+        if (is_a($declaredType, PhysicsMaterial::class, true)) {
+            return PhysicsMaterial::fromMetadata($value);
+        }
+
         if (is_a($declaredType, Sprite::class, true)) {
             if (is_string($value)) {
                 $decodedValue = json_decode(trim($value), true);
@@ -2291,7 +2342,17 @@ final class SceneManager implements SingletonInterface, CanStart, CanResume, Can
     public function addScene(SceneInterface $scene, mixed $data = null): self
     {
         $this->scenes->add($scene);
+        $this->synchronizeTitleScenes();
 
         return $this;
+    }
+
+    private function synchronizeTitleScenes(): void
+    {
+        foreach ($this->scenes->toArray() as $scene) {
+            if ($scene instanceof TitleScene) {
+                $scene->refreshPresentation();
+            }
+        }
     }
 }

@@ -8,7 +8,11 @@ function bootstrap(): void
 {
   $gameName = 'Snake'; // This will be overwritten by the .env file
   $game = new Game($gameName);
-  $game->loadSettings();
+  $game
+	->loadScene("Scenes/Level")
+	->loadSettings();
+
+  $game->run();
 }
 
 bootstrap();

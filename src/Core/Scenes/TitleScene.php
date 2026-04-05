@@ -81,8 +81,7 @@ class TitleScene extends AbstractScene
 
     protected int $uiHeight {
         get {
-            $gap = 1;
-            return $this->titleText->getHeight() + $gap + $this->menu->getItems()->count() + 2; // 1 for each border
+            return $this->getUiBlockHeight();
         }
     }
 
@@ -115,10 +114,10 @@ class TitleScene extends AbstractScene
         $this->menu->addItem(new MenuItem(label: 'Quit', description: 'Quit the game', icon: '🚪', callback: function () {
             quitGame();
         }));
-        $this->configureNewGameMenuItem($this->newGameSceneTarget);
 
         $this->add($this->titleText);
         $this->add($this->menu);
+        $this->refreshPresentation();
     }
 
     /**
@@ -139,7 +138,7 @@ class TitleScene extends AbstractScene
      */
     private function getMenuTopMargin(): int
     {
-        return ($this->titleTopMargin + $this->titleText->getHeight() + 1);
+        return $this->titleTopMargin + $this->titleText->getHeight() + 1;
     }
 
     /**
@@ -151,30 +150,7 @@ class TitleScene extends AbstractScene
     {
         $this->titleText->setText($text);
         usleep(300000);
-        // Ensure the Text has fresh dimensions — Figlet/font rendering or
-        // console init may have completed after setText() ran. Refresh
-        // dimensions if the helper exists so getWidth() is reliable here.
-        try {
-            if (method_exists($this->titleText, 'refreshDimensions')) {
-                $this->titleText->refreshDimensions();
-            }
-        } catch (\Throwable $_) {
-            // best-effort
-        }
-
-        $screenWidth = $this->resolveScreenWidth();
-        $this->titleLeftMargin = (int)intdiv(max(0, $screenWidth - $this->titleText->getWidth()), 2);
-        $this->titleTopMargin = self::TOP_MARGIN_OFFSET;
-        $this->titleText->setPosition(new Vector2($this->titleLeftMargin, $this->titleTopMargin));
-        Debug::log(var_export([
-            'screenWidth' => $screenWidth,
-            'titleText' => $this->titleText->getText(),
-            'titleTextWidth' => $this->titleText->getWidth(),
-            'titleLeftMargin' => $this->titleLeftMargin,
-            'titleTopMargin' => $this->titleTopMargin,
-            'titlePosition' => (string)$this->titleText->getPosition(),
-            'timestamp' => time(),
-        ], true));
+        $this->refreshPresentation();
 
         return $this;
     }
@@ -189,6 +165,7 @@ class TitleScene extends AbstractScene
     public function setTitleFont(FontName|string $fontName): self
     {
         $this->titleText->setFontName($fontName instanceof FontName ? $fontName->value : $fontName);
+        $this->refreshPresentation();
         return $this;
     }
 
@@ -215,6 +192,7 @@ class TitleScene extends AbstractScene
     public function setMenuTitle(string $title): void
     {
         $this->menu->setTitle($title);
+        $this->refreshPresentation();
     }
 
     /**
@@ -238,7 +216,7 @@ class TitleScene extends AbstractScene
     public function setNewGameSceneIndex(int $newGameSceneIndex): self
     {
         $this->newGameSceneTarget = $newGameSceneIndex;
-        $this->configureNewGameMenuItem($newGameSceneIndex);
+        $this->refreshPresentation();
 
         return $this;
     }
@@ -252,9 +230,39 @@ class TitleScene extends AbstractScene
     public function setNewGameSceneIndexBySceneName(string $newGameSceneName): self
     {
         $this->newGameSceneTarget = $newGameSceneName;
-        $this->configureNewGameMenuItem($newGameSceneName);
+        $this->refreshPresentation();
 
         return $this;
+    }
+
+    public function refreshPresentation(): void
+    {
+        if (!isset($this->titleText, $this->menu)) {
+            return;
+        }
+
+        $this->refreshTitleDimensions();
+
+        $screenWidth = $this->resolveScreenWidth();
+        $screenHeight = $this->resolveScreenHeight();
+        $this->titleLeftMargin = (int) intdiv(max(0, $screenWidth - $this->titleText->getWidth()), 2);
+        $this->titleTopMargin = (int) intdiv(max(0, $screenHeight - $this->getUiBlockHeight()), 2);
+        $this->titleText->setPosition(new Vector2($this->titleLeftMargin, $this->titleTopMargin));
+        $this->menu->setPosition(new Vector2($this->getMenuLeftMargin(), $this->getMenuTopMargin()));
+        $this->configureNewGameMenuItem($this->newGameSceneTarget);
+
+        Debug::log(var_export([
+            'screenWidth' => $screenWidth,
+            'screenHeight' => $screenHeight,
+            'titleText' => $this->titleText->getText(),
+            'titleTextWidth' => $this->titleText->getWidth(),
+            'titleTextHeight' => $this->titleText->getHeight(),
+            'titleLeftMargin' => $this->titleLeftMargin,
+            'titleTopMargin' => $this->titleTopMargin,
+            'menuPosition' => (string) $this->menu->getPosition(),
+            'titlePosition' => (string) $this->titleText->getPosition(),
+            'timestamp' => time(),
+        ], true));
     }
 
     /**
@@ -299,18 +307,29 @@ class TitleScene extends AbstractScene
     private function resolveScreenWidth(): int
     {
         return $this->resolveDimension(
+            DEFAULT_SCREEN_WIDTH,
             $this->screenWidth,
             $this->sceneManager->getSettings('screen_width'),
             $this->getSettings('screen_width'),
-            DEFAULT_SCREEN_WIDTH
+        );
+    }
+
+    private function resolveScreenHeight(): int
+    {
+        return $this->resolveDimension(
+            DEFAULT_SCREEN_HEIGHT,
+            $this->screenHeight,
+            $this->sceneManager->getSettings('screen_height'),
+            $this->getSettings('screen_height'),
         );
     }
 
     /**
+     * @param int $defaultValue
      * @param mixed ...$values
      * @return int
      */
-    private function resolveDimension(mixed ...$values): int
+    private function resolveDimension(int $defaultValue, mixed ...$values): int
     {
         foreach ($values as $value) {
             if (is_int($value)) {
@@ -322,7 +341,7 @@ class TitleScene extends AbstractScene
             }
         }
 
-        return DEFAULT_SCREEN_WIDTH;
+        return $defaultValue;
     }
 
     /**
@@ -343,7 +362,7 @@ class TitleScene extends AbstractScene
             $newGameItem->setCallback(function () use ($sceneTarget) {
                 loadScene($sceneTarget);
             });
-            $this->menu->setActiveItemByIndex(max($this->menu->getActiveItemIndex(), 0));
+            $this->menu->setActiveItemByIndex(0);
             $this->menu->updateWindowContent();
             return;
         }
@@ -360,5 +379,24 @@ class TitleScene extends AbstractScene
 
         $this->menu->setActiveItemByIndex(0);
         $this->menu->updateWindowContent();
+    }
+
+    private function refreshTitleDimensions(): void
+    {
+        try {
+            if (method_exists($this->titleText, 'refreshDimensions')) {
+                $this->titleText->refreshDimensions();
+            }
+        } catch (\Throwable $_) {
+            // Best effort only.
+        }
+    }
+
+    private function getUiBlockHeight(): int
+    {
+        $gap = 1;
+        $menuHeight = $this->menu->getSize()->getY();
+
+        return $this->titleText->getHeight() + $gap + $menuHeight;
     }
 }

@@ -12,6 +12,7 @@ use Sendama\Engine\Core\Scenes\Interfaces\SceneInterface;
 use Sendama\Engine\Core\Vector2;
 use Sendama\Engine\Debug\Debug;
 use Sendama\Engine\Exceptions\FileNotFoundException;
+use Sendama\Engine\IO\Console\Console;
 use Sendama\Engine\Physics\Interfaces\ColliderInterface;
 use Sendama\Engine\Physics\Physics;
 use Sendama\Engine\UI\Interfaces\UIElementInterface;
@@ -41,6 +42,8 @@ abstract class AbstractScene implements SceneInterface
      * @var array<string, mixed> $settings
      */
     protected array $settings = [];
+    protected bool $responsiveScreenWidth = false;
+    protected bool $responsiveScreenHeight = false;
     /**
      * @var Physics
      */
@@ -211,24 +214,85 @@ abstract class AbstractScene implements SceneInterface
      */
     public final function loadSceneSettings(?array $settings = null): self
     {
-        foreach ($settings as $key => $value) {
-            $this->settings[$key] = $value;
+        if (is_array($settings)) {
+            foreach ($settings as $key => $value) {
+                $this->settings[$key] = $value;
+            }
         }
 
-        if (isset($this->settings['screen_width']) && isset($this->settings['screen_height'])) {
-            $oldViewport = $this->camera->getViewport();
+        $this->syncResponsiveViewport();
+
+        return $this;
+    }
+
+    /**
+     * Marks one or both scene dimensions as terminal-responsive.
+     *
+     * @param bool $width
+     * @param bool $height
+     * @return void
+     */
+    protected function setResponsiveViewportDimensions(bool $width = false, bool $height = false): void
+    {
+        $this->responsiveScreenWidth = $width;
+        $this->responsiveScreenHeight = $height;
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function usesResponsiveViewport(): bool
+    {
+        return $this->responsiveScreenWidth || $this->responsiveScreenHeight;
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function syncResponsiveViewport(?Rect $terminalSize = null): bool
+    {
+        $viewport = $this->camera->getViewport();
+
+        $resolvedWidth = $viewport->getWidth();
+        $resolvedHeight = $viewport->getHeight();
+
+        if ($this->responsiveScreenWidth || $this->responsiveScreenHeight) {
+            $terminalSize ??= Console::getSize();
+
+            if ($this->responsiveScreenWidth) {
+                $resolvedWidth = max(1, $terminalSize->getWidth());
+            }
+
+            if ($this->responsiveScreenHeight) {
+                $resolvedHeight = max(1, $terminalSize->getHeight());
+            }
+        }
+
+        if (!$this->responsiveScreenWidth && array_key_exists('screen_width', $this->settings)) {
+            $resolvedWidth = max(1, (int)$this->settings['screen_width']);
+        }
+
+        if (!$this->responsiveScreenHeight && array_key_exists('screen_height', $this->settings)) {
+            $resolvedHeight = max(1, (int)$this->settings['screen_height']);
+        }
+
+        $this->settings['screen_width'] = $resolvedWidth;
+        $this->settings['screen_height'] = $resolvedHeight;
+
+        $changed =
+            $viewport->getWidth() !== $resolvedWidth ||
+            $viewport->getHeight() !== $resolvedHeight;
+
+        if ($changed) {
             $this->camera->setViewport(
                 new Rect(
                     $this->camera->getOffset(),
-                    new Vector2(
-                        $this->settings['screen_width'] ?? $oldViewport->getWidth(),
-                        $this->settings['screen_height'] ?? $oldViewport->getHeight()
-                    )
+                    new Vector2($resolvedWidth, $resolvedHeight)
                 )
             );
         }
 
-        return $this;
+        return $changed;
     }
 
     /**

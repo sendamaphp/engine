@@ -799,6 +799,7 @@ class Menu implements MenuInterface
     {
         $this->dimensions->setX($position->getX());
         $this->dimensions->setY($position->getY());
+        $this->window->setPosition($position);
     }
 
     /**
@@ -816,6 +817,8 @@ class Menu implements MenuInterface
     {
         $this->dimensions->setWidth($size->getX());
         $this->dimensions->setHeight($size->getY());
+        $this->window->setWidth($size->getX());
+        $this->window->setHeight($size->getY());
     }
 
     private function decorateContentLine(string $line, ?Color $color, int $lineIndex): string

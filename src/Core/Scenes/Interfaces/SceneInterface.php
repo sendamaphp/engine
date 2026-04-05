@@ -7,6 +7,7 @@ use Sendama\Engine\Core\Grid;
 use Sendama\Engine\Core\Interfaces\CanAwake;
 use Sendama\Engine\Core\Interfaces\CanLoad;
 use Sendama\Engine\Core\Interfaces\CanRender;
+use Sendama\Engine\Core\Rect;
 use Sendama\Engine\Core\Interfaces\CanResume;
 use Sendama\Engine\Core\Interfaces\CanStart;
 use Sendama\Engine\Core\Interfaces\CanUpdate;
@@ -35,6 +36,21 @@ interface SceneInterface extends CanStart, CanUpdate, CanRender, CanResume, CanA
    * @return self
    */
   public function loadSceneSettings(?array $settings = null): self;
+
+  /**
+   * Updates any terminal-responsive viewport dimensions using the current terminal size.
+   *
+   * @param Rect|null $terminalSize The terminal size override.
+   * @return bool True when the viewport changed.
+   */
+  public function syncResponsiveViewport(?Rect $terminalSize = null): bool;
+
+  /**
+   * Determines whether this scene should track terminal size changes.
+   *
+   * @return bool
+   */
+  public function usesResponsiveViewport(): bool;
 
   /**
    * Checks if the scene has started.

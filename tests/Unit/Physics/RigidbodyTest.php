@@ -105,6 +105,19 @@ it('applies accumulated force as constrained movement', function () {
     ->and($mover->getTransform()->getPosition()->getY())->toBe(0);
 });
 
+it('advances by one grid cell per fixed step when velocity matches terminal frame cadence', function () {
+  [$mover, $rigidbody] = createPhysicsObject('Mover', $this->texturePath, new Vector2(0, 0), Rigidbody::class);
+
+  $rigidbody->setVelocity(new Vector2(60, 60));
+
+  ob_start();
+  $rigidbody->simulate();
+  ob_end_clean();
+
+  expect($mover->getTransform()->getPosition()->getX())->toBe(1)
+    ->and($mover->getTransform()->getPosition()->getY())->toBe(1);
+});
+
 it('rotates relative force by the current rigidbody rotation', function () {
   [$mover, $rigidbody] = createPhysicsObject('Mover', $this->texturePath, new Vector2(0, 0), Rigidbody::class);
   $mover->getTransform()->setRotation(new Vector2(90, 0));
@@ -282,6 +295,27 @@ it('dispatches environment collisions for static collision maps', function () {
   expect($bullet->getTransform()->getPosition()->getX())->toBe(0)
     ->and($bulletProbe->events)->toBe(['enter:Environment'])
     ->and($bulletProbe->collisionTypes)->toBe([EnvironmentCollision::class]);
+});
+
+it('applies the rigidbody material when bouncing off the static environment', function () {
+  $staticMap = new Grid(10, 10, 0);
+  for ($x = 0; $x < 10; $x++) {
+    $staticMap->set($x, 0, 1);
+  }
+  $this->physics->loadStaticCollisionMap($staticMap);
+
+  [$ball, $rigidbody] = createPhysicsObject('Ball', $this->texturePath, new Vector2(5, 1), Rigidbody::class);
+  $rigidbody->setMaterial(new PhysicsMaterial(0.0, 1.0));
+  $rigidbody->setVelocity(new Vector2(0, -60));
+
+  ob_start();
+  $rigidbody->simulate();
+  ob_end_clean();
+
+  expect($ball->getTransform()->getPosition()->getX())->toBe(5)
+    ->and($ball->getTransform()->getPosition()->getY())->toBe(1)
+    ->and($rigidbody->getVelocity()->getX())->toBe(0)
+    ->and($rigidbody->getVelocity()->getY())->toBe(60);
 });
 
 /**
