@@ -663,6 +663,7 @@ class Game implements ObservableInterface
      *
      * @return void
      * @throws IOException
+     * @throws InitializationException
      */
     private function start(): void
     {

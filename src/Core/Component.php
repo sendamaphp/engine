@@ -85,7 +85,9 @@ abstract class Component implements ComponentInterface
      */
     public final function start(): void
     {
+        $this->beforeStart();
         $this->onStart();
+        $this->afterStart();
     }
 
     /**
@@ -94,6 +96,16 @@ abstract class Component implements ComponentInterface
      * @return void
      */
     public function onStart(): void
+    {
+        // Do nothing
+    }
+
+    protected function beforeStart(): void
+    {
+        // Do nothing
+    }
+
+    protected function afterStart(): void
     {
         // Do nothing
     }
@@ -112,7 +124,9 @@ abstract class Component implements ComponentInterface
      */
     public final function stop(): void
     {
+        $this->beforeStop();
         $this->onStop();
+        $this->afterStop();
     }
 
     /**
@@ -121,6 +135,16 @@ abstract class Component implements ComponentInterface
      * @return void
      */
     public function onStop(): void
+    {
+        // Do nothing
+    }
+
+    protected function beforeStop(): void
+    {
+        // Do nothing
+    }
+
+    protected function afterStop(): void
     {
         // Do nothing
     }
@@ -208,7 +232,9 @@ abstract class Component implements ComponentInterface
      */
     public final function resume(): void
     {
+        $this->beforeResume();
         $this->onResume();
+        $this->afterResume();
     }
 
     /**
@@ -221,12 +247,24 @@ abstract class Component implements ComponentInterface
         // Do nothing
     }
 
+    protected function beforeResume(): void
+    {
+        // Do nothing
+    }
+
+    protected function afterResume(): void
+    {
+        // Do nothing
+    }
+
     /**
      * @inheritDoc
      */
     public final function suspend(): void
     {
+        $this->beforeSuspend();
         $this->onSuspend();
+        $this->afterSuspend();
     }
 
     /**
@@ -239,13 +277,25 @@ abstract class Component implements ComponentInterface
         // Do nothing
     }
 
+    protected function beforeSuspend(): void
+    {
+        // Do nothing
+    }
+
+    protected function afterSuspend(): void
+    {
+        // Do nothing
+    }
+
     /**
      * @inheritDoc
      */
     public final function fixedUpdate(): void
     {
         if ($this->isEnabled()) {
+            $this->beforeFixedUpdateCycle();
             $this->onFixedUpdate();
+            $this->afterFixedUpdateCycle();
         }
     }
 
@@ -267,13 +317,25 @@ abstract class Component implements ComponentInterface
         // Do nothing
     }
 
+    protected function beforeFixedUpdateCycle(): void
+    {
+        // Do nothing
+    }
+
+    protected function afterFixedUpdateCycle(): void
+    {
+        // Do nothing
+    }
+
     /**
      * @inheritDoc
      */
     public final function update(): void
     {
         if ($this->isEnabled()) {
+            $this->beforeUpdateCycle();
             $this->onUpdate();
+            $this->afterUpdateCycle();
         }
     }
 
@@ -283,6 +345,16 @@ abstract class Component implements ComponentInterface
      * @return void
      */
     public function onUpdate(): void
+    {
+        // Do nothing
+    }
+
+    protected function beforeUpdateCycle(): void
+    {
+        // Do nothing
+    }
+
+    protected function afterUpdateCycle(): void
     {
         // Do nothing
     }
